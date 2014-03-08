@@ -18,16 +18,16 @@ graph.rrd:
 		RRA:AVERAGE:0.5:12:43200
 
 graph-all-1h.png: graph.rrd
-	rrdtool graph graph-co2-1h.png --start end-1h --end now --width 800 --height 400 --alt-autoscale --alt-y-grid \
+	rrdtool graph graph-co2-1h.png --start end-1h --end now --width 600 --height 300 --alt-autoscale --alt-y-grid \
 		DEF:co2=$^:CO2:AVERAGE \
 		'LINE:co2#0000ff:co2 line'
-	rrdtool graph graph-temp-1h.png --start end-1h --end now --width 800 --height 400 --alt-autoscale --alt-y-grid \
+	rrdtool graph graph-temp-1h.png --start end-1h --end now --width 600 --height 300 --alt-autoscale --alt-y-grid \
 		DEF:temp=$^:TEMP:AVERAGE \
 		'LINE:temp#00ff00:temp line'
-	rrdtool graph graph-6d-1h.png --start end-1h --end now --width 800 --height 400 --alt-autoscale --alt-y-grid \
+	rrdtool graph graph-6d-1h.png --start end-1h --end now --width 600 --height 300 --alt-autoscale --alt-y-grid \
 		DEF:x6d=$^:x6d:AVERAGE \
 		'LINE:x6d#ff0000:x6d line'
-	rrdtool graph graph-56-1h.png --start end-1h --end now --width 800 --height 400 --alt-autoscale --alt-y-grid \
+	rrdtool graph graph-56-1h.png --start end-1h --end now --width 600 --height 300 --alt-autoscale --alt-y-grid \
 		DEF:x56=$^:x56:AVERAGE \
 		'LINE:x56#00ffff:x56 line'
 

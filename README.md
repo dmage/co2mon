@@ -16,3 +16,8 @@
 ## D-Bus Monitor
 
     dbus-monitor "type='signal',interface='io.github.dmage.CO2Mon',member='NewValue'"
+
+## See also
+
+  * [ZyAura ZG01C Module Manual](http://www.zyaura.com/support/manual/pdf/ZyAura_CO2_Monitor_ZG01C_Module_ApplicationNote_141120.pdf)
+  * [RevSpace CO2 Meter Hacking](https://revspace.nl/CO2MeterHacking)

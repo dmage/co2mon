@@ -25,6 +25,28 @@
 
 #include "device.h"
 
+static const gchar service[] = "io.github.dmage.CO2Mon";
+static const gchar object_name[] = "/io/github/dmage/CO2Mon";
+
+static GDBusNodeInfo *introspection_data = NULL;
+static const gchar introspection_xml[] =
+    "<node>"
+    "  <interface name='io.github.dmage.CO2Mon'>"
+    "    <method name='GetTemperature'>"
+    "      <arg type='d' name='response' direction='out'/>"
+    "    </method>"
+    "    <method name='GetCO2'>"
+    "      <arg type='q' name='response' direction='out'/>"
+    "    </method>"
+    "    <signal name='NewValue'>"
+    "      <arg type='y' name='code'/>"
+    "      <arg type='q' name='raw_value'/>"
+    "      <arg type='s' name='name'/>"
+    "      <arg type='v' name='value'/>"
+    "    </signal>"
+    "  </interface>"
+    "</node>";
+
 #define CODE_TEMP 0x42
 #define CODE_CO2 0x50
 
@@ -156,28 +178,8 @@ device_loop(libusb_device *dev)
     co2mon_close_device(handle);
 }
 
-int main()
+gpointer monitor_loop(gpointer unused)
 {
-    int r;
-
-    GError *error = NULL;
-
-    connection = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
-    if (connection == NULL)
-    {
-        g_assert(error != NULL);
-        fprintf(stderr, "Unable to connect to D-Bus: %s\n", error->message);
-        g_error_free(error);
-        return 1;
-    }
-
-    r = libusb_init(NULL);
-    if (r < 0)
-    {
-        fprintf(stderr, "libusb_init: error %d\n", r);
-        return r;
-    }
-
     while (1)
     {
         libusb_device *dev = co2mon_find_device();
@@ -188,12 +190,157 @@ int main()
             continue;
         }
 
-        printf("Bus %03d Device %03d\n",
+        printf("Bus %03d Device %03d: sending values to D-Bus...\n",
             libusb_get_bus_number(dev), libusb_get_device_address(dev));
+
         device_loop(dev);
+
         co2mon_release_device(dev);
         sleep(1);
     }
+}
+
+static GVariant *
+handle_get_property(GDBusConnection  *connection,
+                    const gchar      *sender,
+                    const gchar      *object_path,
+                    const gchar      *interface_name,
+                    const gchar      *property_name,
+                    GError          **error,
+                    gpointer          user_data)
+{
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        "Invalid property '%s'", property_name);
+    return NULL;
+}
+
+static void
+handle_method_call(GDBusConnection       *connection,
+                   const gchar           *sender,
+                   const gchar           *object_path,
+                   const gchar           *interface_name,
+                   const gchar           *method_name,
+                   GVariant              *parameters,
+                   GDBusMethodInvocation *invocation,
+                   gpointer               user_data)
+{
+    if (g_strcmp0(method_name, "GetTemperature") == 0)
+    {
+        GVariant *result = g_variant_new("(d)", get_temperature());
+        g_dbus_method_invocation_return_value(invocation, result);
+    }
+    else if (g_strcmp0(method_name, "GetCO2") == 0)
+    {
+        GVariant *result = g_variant_new("(q)", get_co2());
+        g_dbus_method_invocation_return_value(invocation, result);
+    }
+    else
+    {
+        g_dbus_method_invocation_return_error(invocation,
+            G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+            "Invalid method: '%s'", method_name);
+    }
+}
+
+static gboolean
+handle_set_property(GDBusConnection  *connection,
+                    const gchar      *sender,
+                    const gchar      *object_path,
+                    const gchar      *interface_name,
+                    const gchar      *property_name,
+                    GVariant         *value,
+                    GError          **error,
+                    gpointer          user_data)
+{
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        "Invalid property: '%s'", property_name);
+    return FALSE;
+}
+
+static void
+on_bus_acquired(GDBusConnection *conn,
+                const gchar     *name,
+                gpointer        user_data)
+{
+    static GDBusInterfaceVTable interface_vtable = {
+        handle_method_call,
+        handle_get_property,
+        handle_set_property
+    };
+
+    guint registration_id;
+    GError *error = NULL;
+    GThread *monitor_loop_thread;
+
+    connection = conn;
+
+    registration_id = g_dbus_connection_register_object(
+        connection,
+        object_name,
+        introspection_data->interfaces[0],
+        &interface_vtable,
+        NULL,
+        NULL,
+        &error
+    );
+
+    monitor_loop_thread = g_thread_new("monitor_loop", monitor_loop, NULL);
+}
+
+static void
+on_name_acquired(GDBusConnection *connection,
+                 const gchar     *name,
+                 gpointer         user_data)
+{
+}
+
+static void
+on_name_lost(GDBusConnection *connection,
+             const gchar     *name,
+             gpointer         user_data)
+{
+    if (connection == NULL)
+    {
+        fprintf(stderr, "Unable to connect to D-Bus\n");
+    }
+    else
+    {
+        fprintf(stderr, "PANIC! Lost D-Bus name\n");
+    }
+    exit(1);
+}
+
+int main()
+{
+    int r;
+
+    GError *error = NULL;
+
+    r = libusb_init(NULL);
+    if (r < 0)
+    {
+        fprintf(stderr, "libusb_init: error %d\n", r);
+        return r;
+    }
+
+    GMainLoop *main_loop = g_main_loop_new(NULL, FALSE);
+
+    introspection_data = g_dbus_node_info_new_for_xml(introspection_xml, NULL);
+
+    guint owner_id = g_bus_own_name(
+        G_BUS_TYPE_SESSION,
+        service,
+        G_BUS_NAME_OWNER_FLAGS_NONE,
+        on_bus_acquired,
+        on_name_acquired,
+        on_name_lost,
+        NULL,
+        NULL
+    );
+
+    g_main_loop_run(main_loop);
+
+    g_bus_unown_name(owner_id);
 
     libusb_exit(NULL);
     return 0;

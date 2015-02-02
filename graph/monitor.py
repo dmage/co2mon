@@ -13,7 +13,7 @@ def message_handler(bus, msg):
 
 def main():
     DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
+    bus = dbus.SystemBus()
 
     string = "type='signal',interface='io.github.dmage.CO2Mon',member='NewValue'"
     bus.add_match_string(string)

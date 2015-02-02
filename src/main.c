@@ -105,6 +105,8 @@ device_loop(libusb_device *dev)
         return;
     }
 
+    printf("Sending values to D-Bus...\n");
+
     while (1)
     {
         r = co2mon_read_data(handle, magic_table, result);
@@ -180,17 +182,23 @@ device_loop(libusb_device *dev)
 
 gpointer monitor_loop(gpointer unused)
 {
+    gboolean show_no_device = TRUE;
     while (1)
     {
         libusb_device *dev = co2mon_find_device();
         if (dev == NULL)
         {
-            fprintf(stderr, "No CO2 device found\n");
+            if (show_no_device) {
+                fprintf(stderr, "No CO2 device found\n");
+                show_no_device = FALSE;
+            }
             sleep(1);
             continue;
         }
 
-        printf("Bus %03d Device %03d: sending values to D-Bus...\n",
+        show_no_device = TRUE;
+
+        printf("Bus %03d Device %03d\n",
             libusb_get_bus_number(dev), libusb_get_device_address(dev));
 
         device_loop(dev);
@@ -319,7 +327,7 @@ int main()
     r = libusb_init(NULL);
     if (r < 0)
     {
-        fprintf(stderr, "libusb_init: error %d\n", r);
+        fprintf(stderr, "libusb_init: %s\n", libusb_strerror(r));
         return r;
     }
 

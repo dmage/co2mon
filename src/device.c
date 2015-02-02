@@ -30,7 +30,7 @@ is_co2_device(libusb_device *dev)
     r = libusb_get_device_descriptor(dev, &desc);
     if (r < 0)
     {
-        fprintf(stderr, "libusb_get_device_descriptor: error %d\n", r);
+        fprintf(stderr, "libusb_get_device_descriptor: %s\n", libusb_strerror(r));
         return 0;
     }
 
@@ -53,7 +53,7 @@ co2mon_find_device()
     cnt = libusb_get_device_list(NULL, &devs);
     if (cnt < 0)
     {
-        fprintf(stderr, "libusb_get_device_list: error %ld\n", (long)cnt);
+        fprintf(stderr, "libusb_get_device_list: %s\n", libusb_strerror(cnt));
         return NULL;
     }
 
@@ -85,7 +85,7 @@ co2mon_open_device(libusb_device *dev)
     int r = libusb_open(dev, &handle);
     if (r != 0)
     {
-      fprintf(stderr, "libusb_open: error %s\n", libusb_strerror(r));
+        fprintf(stderr, "libusb_open: %s\n", libusb_strerror(r));
         return NULL;
     }
 
@@ -96,7 +96,7 @@ co2mon_open_device(libusb_device *dev)
     r = libusb_claim_interface(handle, 0);
     if (r != 0)
     {
-        fprintf(stderr, "libusb_claim_interface: error %d\n", r);
+        fprintf(stderr, "libusb_claim_interface: %s\n", libusb_strerror(r));
         libusb_close(handle);
         return NULL;
     }
@@ -122,7 +122,7 @@ co2mon_send_magic_table(libusb_device_handle *handle, unsigned char magic_table[
         2000 /* milliseconds */);
     if (r < 0 || r != sizeof(magic_table))
     {
-        fprintf(stderr, "libusb_control_transfer(out, magic_table): error %d\n", r);
+        fprintf(stderr, "libusb_control_transfer(out, magic_table): %s\n", libusb_strerror(r));
         return 0;
     }
     return 1;
@@ -181,7 +181,7 @@ co2mon_read_data(libusb_device_handle *handle, unsigned char magic_table[8], uns
         5000 /* milliseconds */);
     if (r < 0)
     {
-        fprintf(stderr, "libusb_interrupt_transfer(in, data): error %d\n", r);
+        fprintf(stderr, "libusb_interrupt_transfer(in, data): %s\n", libusb_strerror(r));
         return r;
     }
     if (actual_length != sizeof(data))

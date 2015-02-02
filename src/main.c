@@ -266,9 +266,7 @@ handle_set_property(GDBusConnection  *connection,
 }
 
 static void
-on_bus_acquired(GDBusConnection *conn,
-                const gchar     *name,
-                gpointer        user_data)
+on_bus_acquired()
 {
     static GDBusInterfaceVTable interface_vtable = {
         handle_method_call,
@@ -279,8 +277,6 @@ on_bus_acquired(GDBusConnection *conn,
     guint registration_id;
     GError *error = NULL;
     GThread *monitor_loop_thread;
-
-    connection = conn;
 
     registration_id = g_dbus_connection_register_object(
         connection,
@@ -307,14 +303,7 @@ on_name_lost(GDBusConnection *connection,
              const gchar     *name,
              gpointer         user_data)
 {
-    if (connection == NULL)
-    {
-        fprintf(stderr, "Unable to connect to D-Bus\n");
-    }
-    else
-    {
-        fprintf(stderr, "PANIC! Lost D-Bus name\n");
-    }
+    fprintf(stderr, "Unable to acquire D-Bus name\n");
     exit(1);
 }
 
@@ -331,21 +320,31 @@ int main()
         return r;
     }
 
-    GMainLoop *main_loop = g_main_loop_new(NULL, FALSE);
-
     introspection_data = g_dbus_node_info_new_for_xml(introspection_xml, NULL);
+    g_assert(introspection_data != NULL);
 
-    guint owner_id = g_bus_own_name(
-        G_BUS_TYPE_SESSION,
+    connection = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+    if (connection == NULL)
+    {
+        g_assert(error != NULL);
+        fprintf(stderr, "Unable to connect to D-Bus: %s\n", error->message);
+        g_error_free(error);
+        return 1;
+    }
+
+    on_bus_acquired();
+
+    guint owner_id = g_bus_own_name_on_connection(
+        connection,
         service,
         G_BUS_NAME_OWNER_FLAGS_NONE,
-        on_bus_acquired,
         on_name_acquired,
         on_name_lost,
         NULL,
         NULL
     );
 
+    GMainLoop *main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(main_loop);
 
     g_bus_unown_name(owner_id);

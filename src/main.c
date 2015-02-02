@@ -303,7 +303,7 @@ on_name_lost(GDBusConnection *connection,
              const gchar     *name,
              gpointer         user_data)
 {
-    fprintf(stderr, "Unable to acquire bus name '%s'\n", name);
+    fprintf(stderr, "Unable to acquire bus name '%s'. Check your /etc/dbus-1/system.d/\n", name);
     g_main_loop_quit(user_data);
 }
 
@@ -323,7 +323,7 @@ int main()
     introspection_data = g_dbus_node_info_new_for_xml(introspection_xml, NULL);
     g_assert(introspection_data != NULL);
 
-    connection = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+    connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
     if (connection == NULL)
     {
         g_assert(error != NULL);

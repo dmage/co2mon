@@ -2,6 +2,8 @@
 
 ## Usage
 
+    sudo cp -iv dbusrules/io.github.dmage.CO2Mon.conf /etc/dbus-1/system.d/
+
     mkdir build
     cd build
     cmake ..
@@ -13,14 +15,26 @@
     xdg-open index.html &
     ./update_data.sh
 
-## D-Bus Monitor
+## D-Bus Signals
 
-    dbus-monitor "type='signal',interface='io.github.dmage.CO2Mon',member='NewValue'"
+    dbus-monitor --system \
+        "type='signal',interface='io.github.dmage.CO2Mon',member='NewValue'"
 
 ## D-Bus Methods
 
-    dbus-send --session --dest=io.github.dmage.CO2Mon --type=method_call --print-reply /io/github/dmage/CO2Mon io.github.dmage.CO2Mon.GetTemperature
-    dbus-send --session --dest=io.github.dmage.CO2Mon --type=method_call --print-reply /io/github/dmage/CO2Mon io.github.dmage.CO2Mon.GetCO2
+    dbus-send --system \
+        --dest=io.github.dmage.CO2Mon \
+        --type=method_call \
+        --print-reply \
+        /io/github/dmage/CO2Mon \
+        io.github.dmage.CO2Mon.GetTemperature
+
+    dbus-send --system \
+        --dest=io.github.dmage.CO2Mon \
+        --type=method_call \
+        --print-reply \
+        /io/github/dmage/CO2Mon \
+        io.github.dmage.CO2Mon.GetCO2
 
 ## See also
 

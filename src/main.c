@@ -303,8 +303,8 @@ on_name_lost(GDBusConnection *connection,
              const gchar     *name,
              gpointer         user_data)
 {
-    fprintf(stderr, "Unable to acquire D-Bus name\n");
-    exit(1);
+    fprintf(stderr, "Unable to acquire bus name '%s'\n", name);
+    g_main_loop_quit(user_data);
 }
 
 int main()
@@ -334,21 +334,24 @@ int main()
 
     on_bus_acquired();
 
+    GMainLoop *main_loop = g_main_loop_new(NULL, FALSE);
+
     guint owner_id = g_bus_own_name_on_connection(
         connection,
         service,
         G_BUS_NAME_OWNER_FLAGS_NONE,
         on_name_acquired,
         on_name_lost,
-        NULL,
+        main_loop, /* user_data */
         NULL
     );
 
-    GMainLoop *main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(main_loop);
 
     g_bus_unown_name(owner_id);
+    g_main_loop_unref(main_loop);
+    g_object_unref(connection);
 
     libusb_exit(NULL);
-    return 0;
+    return 1;
 }

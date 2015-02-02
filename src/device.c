@@ -85,7 +85,7 @@ co2mon_open_device(libusb_device *dev)
     int r = libusb_open(dev, &handle);
     if (r != 0)
     {
-        fprintf(stderr, "libusb_open: error %d\n", r);
+      fprintf(stderr, "libusb_open: error %s\n", libusb_strerror(r));
         return NULL;
     }
 

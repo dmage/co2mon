@@ -15,34 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CO2_MON_DEVICE_H_INCLUDED_
-#define CO2_MON_DEVICE_H_INCLUDED_
+#ifndef CO2_MON_CONFIG_H_INCLUDED_
+#define CO2_MON_CONFIG_H_INCLUDED_
 
-#include <libusb.h>
-
-#include "config.h"
-
-#ifndef HAVE_LIBUSB_STRERROR
-extern const char *
-libusb_strerror(enum libusb_error errcode);
-#endif
-
-extern libusb_device *
-co2mon_find_device();
-
-extern void
-co2mon_release_device(libusb_device *dev);
-
-extern libusb_device_handle *
-co2mon_open_device(libusb_device *dev);
-
-extern void
-co2mon_close_device(libusb_device_handle *handle);
-
-extern int
-co2mon_send_magic_table(libusb_device_handle *handle, unsigned char magic_table[8]);
-
-extern int
-co2mon_read_data(libusb_device_handle *handle, unsigned char magic_table[8], unsigned char result[8]);
+#cmakedefine HAVE_LIBUSB_STRERROR 1
 
 #endif

@@ -87,7 +87,6 @@ static void
 device_loop(libusb_device *dev)
 {
     libusb_device_handle *handle;
-    int r;
     unsigned char magic_table[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     unsigned char result[8];
 
@@ -109,7 +108,7 @@ device_loop(libusb_device *dev)
 
     while (1)
     {
-        r = co2mon_read_data(handle, magic_table, result);
+        int r = co2mon_read_data(handle, magic_table, result);
         if (r == LIBUSB_ERROR_NO_DEVICE)
         {
             fprintf(stderr, "Device has been disconnected\n");
@@ -271,14 +270,12 @@ on_bus_acquired()
     static GDBusInterfaceVTable interface_vtable = {
         handle_method_call,
         handle_get_property,
-        handle_set_property
+        handle_set_property,
+        {0}
     };
 
-    guint registration_id;
     GError *error = NULL;
-    GThread *monitor_loop_thread;
-
-    registration_id = g_dbus_connection_register_object(
+    guint registration_id = g_dbus_connection_register_object(
         connection,
         object_name,
         introspection_data->interfaces[0],
@@ -288,7 +285,7 @@ on_bus_acquired()
         &error
     );
 
-    monitor_loop_thread = g_thread_new("monitor_loop", monitor_loop, NULL);
+    GThread *monitor_loop_thread = g_thread_new("monitor_loop", monitor_loop, NULL);
 }
 
 static void

@@ -64,40 +64,31 @@ static int
 is_co2_device(libusb_device *dev)
 {
     struct libusb_device_descriptor desc;
-    int r;
-
-    r = libusb_get_device_descriptor(dev, &desc);
+    int r = libusb_get_device_descriptor(dev, &desc);
     if (r < 0)
     {
         fprintf(stderr, "libusb_get_device_descriptor: %s\n", libusb_strerror(r));
         return 0;
     }
 
-    if (desc.idVendor == 0x04d9 && desc.idProduct == 0xa052)
-    {
-        return 1;
-    }
-    return 0;
+    return desc.idVendor == 0x04d9 && desc.idProduct == 0xa052;
 }
 
 libusb_device *
 co2mon_find_device()
 {
     libusb_device **devs;
-    libusb_device *dev;
-    libusb_device *result = NULL;
-    ssize_t cnt;
-    int i;
-
-    cnt = libusb_get_device_list(NULL, &devs);
+    ssize_t cnt = libusb_get_device_list(NULL, &devs);
     if (cnt < 0)
     {
         fprintf(stderr, "libusb_get_device_list: %s\n", libusb_strerror(cnt));
         return NULL;
     }
 
-    for (i = 0; (dev = devs[i]) != NULL; ++i)
+    libusb_device *result = NULL;
+    for (int i = 0; devs[i] != NULL; ++i)
     {
+        libusb_device *dev = devs[i];
         if (is_co2_device(dev))
         {
             result = dev;
@@ -176,24 +167,20 @@ swap_char(unsigned char *a, unsigned char *b)
 }
 
 static void
-decode_buf(char result[8], unsigned char buf[8], unsigned char magic_table[8])
+decode_buf(unsigned char result[8], unsigned char buf[8], unsigned char magic_table[8])
 {
-    const unsigned char magic_word[8] = "Htemp99e";
-
-    int i;
-    unsigned char tmp;
-
     swap_char(&buf[0], &buf[2]);
     swap_char(&buf[1], &buf[4]);
     swap_char(&buf[3], &buf[7]);
     swap_char(&buf[5], &buf[6]);
 
-    for (i = 0; i < 8; ++i)
+    for (int i = 0; i < 8; ++i)
     {
         buf[i] ^= magic_table[i];
+        // TODO: do we really need to xor it with magic_table? Its value is {0}
     }
 
-    tmp = (buf[7] << 5);
+    unsigned char tmp = (buf[7] << 5);
     result[7] = (buf[6] << 5) | (buf[7] >> 3);
     result[6] = (buf[5] << 5) | (buf[6] >> 3);
     result[5] = (buf[4] << 5) | (buf[5] >> 3);
@@ -203,7 +190,8 @@ decode_buf(char result[8], unsigned char buf[8], unsigned char magic_table[8])
     result[1] = (buf[0] << 5) | (buf[1] >> 3);
     result[0] = tmp | (buf[0] >> 3);
 
-    for (i = 0; i < 8; ++i)
+    const unsigned char magic_word[8] = "Htemp99e";
+    for (int i = 0; i < 8; ++i)
     {
         result[i] -= (magic_word[i] << 4) | (magic_word[i] >> 4);
     }

@@ -141,16 +141,16 @@ co2mon_close_device(libusb_device_handle *handle)
 }
 
 int
-co2mon_send_magic_table(libusb_device_handle *handle, unsigned char magic_table[8])
+co2mon_send_magic_table(libusb_device_handle *handle, co2mon_magic_table_t magic_table)
 {
     int r = libusb_control_transfer(
         handle,
         LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
         LIBUSB_REQUEST_SET_CONFIGURATION,
         0x0300, 0,
-        magic_table, sizeof(magic_table),
+        magic_table, sizeof(co2mon_magic_table_t),
         2000 /* milliseconds */);
-    if (r < 0 || r != sizeof(magic_table))
+    if (r < 0 || r != sizeof(co2mon_magic_table_t))
     {
         fprintf(stderr, "libusb_control_transfer(out, magic_table): %s\n", libusb_strerror(r));
         return 0;
@@ -167,7 +167,7 @@ swap_char(unsigned char *a, unsigned char *b)
 }
 
 static void
-decode_buf(unsigned char result[8], unsigned char buf[8], unsigned char magic_table[8])
+decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_magic_table_t magic_table)
 {
     swap_char(&buf[0], &buf[2]);
     swap_char(&buf[1], &buf[4]);
@@ -198,22 +198,22 @@ decode_buf(unsigned char result[8], unsigned char buf[8], unsigned char magic_ta
 }
 
 int
-co2mon_read_data(libusb_device_handle *handle, unsigned char magic_table[8], unsigned char result[8])
+co2mon_read_data(libusb_device_handle *handle, co2mon_magic_table_t magic_table, co2mon_data_t result)
 {
     int actual_length;
-    unsigned char data[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    co2mon_data_t data = {0};
     int r = libusb_interrupt_transfer(handle,
         LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_STANDARD | LIBUSB_RECIPIENT_INTERFACE,
-        data, sizeof(data), &actual_length,
+        data, sizeof(co2mon_data_t), &actual_length,
         5000 /* milliseconds */);
     if (r < 0)
     {
         fprintf(stderr, "libusb_interrupt_transfer(in, data): %s\n", libusb_strerror(r));
         return r;
     }
-    if (actual_length != sizeof(data))
+    if (actual_length != sizeof(co2mon_data_t))
     {
-        fprintf(stderr, "libusb_interrupt_transfer(in, data): trasferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(data));
+        fprintf(stderr, "libusb_interrupt_transfer(in, data): trasferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(co2mon_data_t));
         return 0;
     }
 

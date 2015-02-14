@@ -99,8 +99,8 @@ static void
 device_loop(libusb_device *dev)
 {
     libusb_device_handle *handle;
-    unsigned char magic_table[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-    unsigned char result[8];
+    co2mon_magic_table_t magic_table = {0};
+    co2mon_data_t result;
 
     handle = co2mon_open_device(dev);
     if (handle == NULL)

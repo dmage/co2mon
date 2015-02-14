@@ -75,7 +75,7 @@ is_co2_device(libusb_device *dev)
 }
 
 libusb_device *
-co2mon_find_device()
+co2mon_find_device(void)
 {
     libusb_device **devs;
     ssize_t cnt = libusb_get_device_list(NULL, &devs);

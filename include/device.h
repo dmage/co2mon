@@ -31,7 +31,7 @@ typedef unsigned char co2mon_magic_table_t[8];
 typedef unsigned char co2mon_data_t[8];
 
 extern libusb_device *
-co2mon_find_device();
+co2mon_find_device(void);
 
 extern void
 co2mon_release_device(libusb_device *dev);

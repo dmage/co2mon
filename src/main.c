@@ -84,13 +84,13 @@ get_raw_data(unsigned char code)
 }
 
 static double
-get_temperature()
+get_temperature(void)
 {
     return decode_temperature(get_raw_data(CODE_TEMP));
 }
 
 static uint16_t
-get_co2()
+get_co2(void)
 {
     return get_raw_data(CODE_CO2);
 }
@@ -191,7 +191,8 @@ device_loop(libusb_device *dev)
     co2mon_close_device(handle);
 }
 
-gpointer monitor_loop(gpointer UNUSED(data))
+static gpointer
+monitor_loop(gpointer UNUSED(data))
 {
     gboolean show_no_device = TRUE;
     while (1)
@@ -217,6 +218,7 @@ gpointer monitor_loop(gpointer UNUSED(data))
         co2mon_release_device(dev);
         sleep(1);
     }
+    return NULL;
 }
 
 static GVariant *
@@ -277,7 +279,7 @@ handle_set_property(GDBusConnection  *UNUSED(connection),
 }
 
 static void
-on_bus_acquired()
+on_bus_acquired(void)
 {
     static GDBusInterfaceVTable interface_vtable = {
         handle_method_call,
@@ -316,7 +318,7 @@ on_name_lost(GDBusConnection *UNUSED(connection),
     g_main_loop_quit(user_data);
 }
 
-int main()
+int main(void)
 {
     int r;
 

@@ -177,7 +177,6 @@ decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_magic_table_t magic_t
     for (int i = 0; i < 8; ++i)
     {
         buf[i] ^= magic_table[i];
-        // TODO: do we really need to xor it with magic_table? Its value is {0}
     }
 
     unsigned char tmp = (buf[7] << 5);

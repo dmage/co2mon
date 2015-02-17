@@ -27,8 +27,11 @@ extern const char *
 libusb_strerror(enum libusb_error errcode);
 #endif
 
+typedef unsigned char co2mon_magic_table_t[8];
+typedef unsigned char co2mon_data_t[8];
+
 extern libusb_device *
-co2mon_find_device();
+co2mon_find_device(void);
 
 extern void
 co2mon_release_device(libusb_device *dev);
@@ -40,9 +43,9 @@ extern void
 co2mon_close_device(libusb_device_handle *handle);
 
 extern int
-co2mon_send_magic_table(libusb_device_handle *handle, unsigned char magic_table[8]);
+co2mon_send_magic_table(libusb_device_handle *handle, co2mon_magic_table_t magic_table);
 
 extern int
-co2mon_read_data(libusb_device_handle *handle, unsigned char magic_table[8], unsigned char result[8]);
+co2mon_read_data(libusb_device_handle *handle, co2mon_magic_table_t magic_table, co2mon_data_t result);
 
 #endif

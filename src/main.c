@@ -72,13 +72,13 @@ get_raw_data(unsigned char code)
 }
 
 static double
-get_temperature()
+get_temperature(void)
 {
     return decode_temperature(get_raw_data(CODE_TEMP));
 }
 
 static uint16_t
-get_co2()
+get_co2(void)
 {
     return get_raw_data(CODE_CO2);
 }
@@ -87,9 +87,8 @@ static void
 device_loop(libusb_device *dev)
 {
     libusb_device_handle *handle;
-    int r;
-    unsigned char magic_table[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-    unsigned char result[8];
+    co2mon_magic_table_t magic_table = {0};
+    co2mon_data_t result;
 
     handle = co2mon_open_device(dev);
     if (handle == NULL)
@@ -109,7 +108,7 @@ device_loop(libusb_device *dev)
 
     while (1)
     {
-        r = co2mon_read_data(handle, magic_table, result);
+        int r = co2mon_read_data(handle, magic_table, result);
         if (r == LIBUSB_ERROR_NO_DEVICE)
         {
             fprintf(stderr, "Device has been disconnected\n");
@@ -180,7 +179,8 @@ device_loop(libusb_device *dev)
     co2mon_close_device(handle);
 }
 
-gpointer monitor_loop(gpointer unused)
+static gpointer
+monitor_loop(G_GNUC_UNUSED gpointer data)
 {
     gboolean show_no_device = TRUE;
     while (1)
@@ -206,16 +206,18 @@ gpointer monitor_loop(gpointer unused)
         co2mon_release_device(dev);
         sleep(1);
     }
+    return NULL;
 }
 
 static GVariant *
-handle_get_property(GDBusConnection  *connection,
-                    const gchar      *sender,
-                    const gchar      *object_path,
-                    const gchar      *interface_name,
-                    const gchar      *property_name,
-                    GError          **error,
-                    gpointer          user_data)
+handle_get_property(
+    G_GNUC_UNUSED GDBusConnection  *connection,
+    G_GNUC_UNUSED const gchar      *sender,
+    G_GNUC_UNUSED const gchar      *object_path,
+    G_GNUC_UNUSED const gchar      *interface_name,
+                  const gchar      *property_name,
+                  GError          **error,
+    G_GNUC_UNUSED gpointer          user_data)
 {
     g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
         "Invalid property '%s'", property_name);
@@ -223,14 +225,15 @@ handle_get_property(GDBusConnection  *connection,
 }
 
 static void
-handle_method_call(GDBusConnection       *connection,
-                   const gchar           *sender,
-                   const gchar           *object_path,
-                   const gchar           *interface_name,
-                   const gchar           *method_name,
-                   GVariant              *parameters,
-                   GDBusMethodInvocation *invocation,
-                   gpointer               user_data)
+handle_method_call(
+    G_GNUC_UNUSED GDBusConnection       *connection,
+    G_GNUC_UNUSED const gchar           *sender,
+    G_GNUC_UNUSED const gchar           *object_path,
+    G_GNUC_UNUSED const gchar           *interface_name,
+                  const gchar           *method_name,
+    G_GNUC_UNUSED GVariant              *parameters,
+                  GDBusMethodInvocation *invocation,
+    G_GNUC_UNUSED gpointer               user_data)
 {
     if (g_strcmp0(method_name, "GetTemperature") == 0)
     {
@@ -251,14 +254,15 @@ handle_method_call(GDBusConnection       *connection,
 }
 
 static gboolean
-handle_set_property(GDBusConnection  *connection,
-                    const gchar      *sender,
-                    const gchar      *object_path,
-                    const gchar      *interface_name,
-                    const gchar      *property_name,
-                    GVariant         *value,
-                    GError          **error,
-                    gpointer          user_data)
+handle_set_property(
+    G_GNUC_UNUSED GDBusConnection  *connection,
+    G_GNUC_UNUSED const gchar      *sender,
+    G_GNUC_UNUSED const gchar      *object_path,
+    G_GNUC_UNUSED const gchar      *interface_name,
+                  const gchar      *property_name,
+    G_GNUC_UNUSED GVariant         *value,
+                  GError          **error,
+    G_GNUC_UNUSED gpointer          user_data)
 {
     g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
         "Invalid property: '%s'", property_name);
@@ -266,19 +270,17 @@ handle_set_property(GDBusConnection  *connection,
 }
 
 static void
-on_bus_acquired()
+on_bus_acquired(void)
 {
     static GDBusInterfaceVTable interface_vtable = {
         handle_method_call,
         handle_get_property,
-        handle_set_property
+        handle_set_property,
+        {0}
     };
 
-    guint registration_id;
     GError *error = NULL;
-    GThread *monitor_loop_thread;
-
-    registration_id = g_dbus_connection_register_object(
+    guint registration_id = g_dbus_connection_register_object(
         connection,
         object_name,
         introspection_data->interfaces[0],
@@ -288,26 +290,28 @@ on_bus_acquired()
         &error
     );
 
-    monitor_loop_thread = g_thread_new("monitor_loop", monitor_loop, NULL);
+    GThread *monitor_loop_thread = g_thread_new("monitor_loop", monitor_loop, NULL);
 }
 
 static void
-on_name_acquired(GDBusConnection *connection,
-                 const gchar     *name,
-                 gpointer         user_data)
+on_name_acquired(
+    G_GNUC_UNUSED GDBusConnection *connection,
+    G_GNUC_UNUSED const gchar     *name,
+    G_GNUC_UNUSED gpointer         user_data)
 {
 }
 
 static void
-on_name_lost(GDBusConnection *connection,
-             const gchar     *name,
-             gpointer         user_data)
+on_name_lost(
+    G_GNUC_UNUSED GDBusConnection *connection,
+                  const gchar     *name,
+                  gpointer         user_data)
 {
     fprintf(stderr, "Unable to acquire bus name '%s'. Check your /etc/dbus-1/system.d/\n", name);
     g_main_loop_quit(user_data);
 }
 
-int main()
+int main(void)
 {
     int r;
 

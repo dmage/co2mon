@@ -1,7 +1,8 @@
 project(co2mon)
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra")
 
 find_package(PkgConfig)
 pkg_check_modules(LIBUSB REQUIRED libusb-1.0)

@@ -1,3 +1,4 @@
+#!/bin/bash
 last_co2=U
 last_temp=U
 

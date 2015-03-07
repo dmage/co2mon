@@ -86,21 +86,12 @@ get_co2(void)
 static void
 device_loop(co2mon_device dev)
 {
-    co2mon_device_handle handle;
     co2mon_magic_table_t magic_table = {0};
     co2mon_data_t result;
 
-    handle = co2mon_open_device(dev);
-    if (handle == NULL)
-    {
-        fprintf(stderr, "Unable to contact with CO2 device\n");
-        return;
-    }
-
-    if (!co2mon_send_magic_table(handle, magic_table))
+    if (!co2mon_send_magic_table(dev, magic_table))
     {
         fprintf(stderr, "Unable to send magic table to CO2 device\n");
-        co2mon_close_device(handle);
         return;
     }
 
@@ -108,7 +99,7 @@ device_loop(co2mon_device dev)
 
     while (1)
     {
-        int r = co2mon_read_data(handle, magic_table, result);
+        int r = co2mon_read_data(dev, magic_table, result);
         if (r == LIBUSB_ERROR_NO_DEVICE)
         {
             fprintf(stderr, "Device has been disconnected\n");
@@ -175,8 +166,6 @@ device_loop(co2mon_device dev)
             g_error_free(error);
         }
     }
-
-    co2mon_close_device(handle);
 }
 
 static gpointer
@@ -185,32 +174,32 @@ monitor_loop(G_GNUC_UNUSED gpointer data)
     gboolean show_no_device = TRUE;
     while (1)
     {
-        co2mon_device dev = co2mon_find_device();
+        co2mon_device dev = co2mon_open_device();
         if (dev == NULL)
         {
             if (show_no_device) {
-                fprintf(stderr, "No CO2 device found\n");
+                fprintf(stderr, "Unable to open CO2 device\n");
                 show_no_device = FALSE;
             }
-            sleep(1);
-            continue;
-        }
-
-        show_no_device = TRUE;
-
-        char path[16];
-        if (co2mon_device_path(dev, path, 16))
-        {
-            printf("Path: %s\n", path);
         }
         else
         {
-            printf("Path: (error)\n");
+            show_no_device = TRUE;
+
+            char path[16];
+            if (co2mon_device_path(dev, path, 16))
+            {
+                printf("Path: %s\n", path);
+            }
+            else
+            {
+                printf("Path: (error)\n");
+            }
+
+            device_loop(dev);
+
+            co2mon_close_device(dev);
         }
-
-        device_loop(dev);
-
-        co2mon_release_device(dev);
         sleep(1);
     }
     return NULL;

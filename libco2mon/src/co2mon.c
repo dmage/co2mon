@@ -95,7 +95,7 @@ is_co2_device(libusb_device *dev)
     return desc.idVendor == 0x04d9 && desc.idProduct == 0xa052;
 }
 
-libusb_device *
+static libusb_device *
 co2mon_find_device(void)
 {
     libusb_device **devs;
@@ -123,24 +123,8 @@ co2mon_find_device(void)
     return result;
 }
 
-int
-co2mon_device_path(libusb_device *dev, char *str, size_t maxlen)
-{
-    snprintf(str, maxlen, "%04x:%04x",
-        libusb_get_bus_number(dev),
-        libusb_get_device_address(dev));
-    str[maxlen - 1] = '\0';
-    return 1;
-}
-
-void
-co2mon_release_device(libusb_device *dev)
-{
-    libusb_unref_device(dev);
-}
-
-libusb_device_handle *
-co2mon_open_device(libusb_device *dev)
+static libusb_device_handle *
+co2mon_open_device_impl(libusb_device *dev)
 {
     libusb_device_handle *handle;
     int r = libusb_open(dev, &handle);
@@ -165,10 +149,42 @@ co2mon_open_device(libusb_device *dev)
     return handle;
 }
 
+libusb_device_handle *
+co2mon_open_device()
+{
+    libusb_device *dev = co2mon_find_device();
+    if (!dev)
+    {
+        return NULL;
+    }
+
+    libusb_device_handle *handle = co2mon_open_device_impl(dev);
+    if (!handle)
+    {
+        libusb_unref_device(dev);
+        return NULL;
+    }
+
+    return handle;
+}
+
 void
 co2mon_close_device(libusb_device_handle *handle)
 {
+    libusb_device *dev = libusb_get_device(handle);
     libusb_close(handle);
+    libusb_unref_device(dev);
+}
+
+int
+co2mon_device_path(libusb_device_handle *handle, char *str, size_t maxlen)
+{
+    libusb_device *dev = libusb_get_device(handle);
+    snprintf(str, maxlen, "%04x:%04x",
+        libusb_get_bus_number(dev),
+        libusb_get_device_address(dev));
+    str[maxlen - 1] = '\0';
+    return 1;
 }
 
 int

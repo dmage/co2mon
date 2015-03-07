@@ -123,6 +123,16 @@ co2mon_find_device(void)
     return result;
 }
 
+int
+co2mon_device_path(libusb_device *dev, char *str, size_t maxlen)
+{
+    snprintf(str, maxlen, "%04x:%04x",
+        libusb_get_bus_number(dev),
+        libusb_get_device_address(dev));
+    str[maxlen - 1] = '\0';
+    return 1;
+}
+
 void
 co2mon_release_device(libusb_device *dev)
 {

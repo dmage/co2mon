@@ -20,31 +20,37 @@
 
 #include <libusb.h>
 
+typedef libusb_device *co2mon_device;
+typedef libusb_device_handle *co2mon_device_handle;
+
+typedef unsigned char co2mon_magic_table_t[8];
+typedef unsigned char co2mon_data_t[8];
+
 extern int
 co2mon_init();
 
 extern void
 co2mon_exit();
 
-typedef unsigned char co2mon_magic_table_t[8];
-typedef unsigned char co2mon_data_t[8];
-
-extern libusb_device *
+extern co2mon_device
 co2mon_find_device(void);
 
-extern void
-co2mon_release_device(libusb_device *dev);
-
-extern libusb_device_handle *
-co2mon_open_device(libusb_device *dev);
+extern int
+co2mon_device_path(co2mon_device dev, char *str, size_t maxlen);
 
 extern void
-co2mon_close_device(libusb_device_handle *handle);
+co2mon_release_device(co2mon_device dev);
+
+extern co2mon_device_handle
+co2mon_open_device(co2mon_device dev);
+
+extern void
+co2mon_close_device(co2mon_device_handle handle);
 
 extern int
-co2mon_send_magic_table(libusb_device_handle *handle, co2mon_magic_table_t magic_table);
+co2mon_send_magic_table(co2mon_device_handle handle, co2mon_magic_table_t magic_table);
 
 extern int
-co2mon_read_data(libusb_device_handle *handle, co2mon_magic_table_t magic_table, co2mon_data_t result);
+co2mon_read_data(co2mon_device_handle handle, co2mon_magic_table_t magic_table, co2mon_data_t result);
 
 #endif

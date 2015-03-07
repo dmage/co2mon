@@ -84,9 +84,9 @@ get_co2(void)
 }
 
 static void
-device_loop(libusb_device *dev)
+device_loop(co2mon_device dev)
 {
-    libusb_device_handle *handle;
+    co2mon_device_handle handle;
     co2mon_magic_table_t magic_table = {0};
     co2mon_data_t result;
 
@@ -185,7 +185,7 @@ monitor_loop(G_GNUC_UNUSED gpointer data)
     gboolean show_no_device = TRUE;
     while (1)
     {
-        libusb_device *dev = co2mon_find_device();
+        co2mon_device dev = co2mon_find_device();
         if (dev == NULL)
         {
             if (show_no_device) {
@@ -198,8 +198,15 @@ monitor_loop(G_GNUC_UNUSED gpointer data)
 
         show_no_device = TRUE;
 
-        printf("Bus %03d Device %03d\n",
-            libusb_get_bus_number(dev), libusb_get_device_address(dev));
+        char path[16];
+        if (co2mon_device_path(dev, path, 16))
+        {
+            printf("Path: %s\n", path);
+        }
+        else
+        {
+            printf("Path: (error)\n");
+        }
 
         device_loop(dev);
 

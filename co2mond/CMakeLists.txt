@@ -13,6 +13,7 @@ include_directories(
     ${GIO2_INCLUDE_DIRS})
 
 link_directories(
+    ${LIBUSB_LIBRARY_DIRS}
     ${GLIB2_LIBRARY_DIRS}
     ${GIO2_LIBRARY_DIRS})
 

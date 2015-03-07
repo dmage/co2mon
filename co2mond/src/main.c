@@ -100,7 +100,7 @@ device_loop(libusb_device *dev)
     if (!co2mon_send_magic_table(handle, magic_table))
     {
         fprintf(stderr, "Unable to send magic table to CO2 device\n");
-        libusb_close(handle);
+        co2mon_close_device(handle);
         return;
     }
 
@@ -317,10 +317,9 @@ int main(void)
 
     GError *error = NULL;
 
-    r = libusb_init(NULL);
+    r = co2mon_init();
     if (r < 0)
     {
-        fprintf(stderr, "libusb_init: %s\n", libusb_strerror(r));
         return r;
     }
 
@@ -356,6 +355,6 @@ int main(void)
     g_main_loop_unref(main_loop);
     g_object_unref(connection);
 
-    libusb_exit(NULL);
+    co2mon_exit();
     return 1;
 }

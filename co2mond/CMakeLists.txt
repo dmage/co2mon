@@ -2,7 +2,7 @@ project(co2mond)
 cmake_minimum_required(VERSION 2.8)
 
 find_package(PkgConfig)
-pkg_check_modules(HIDAPI REQUIRED hidapi-libusb)
+pkg_search_module(HIDAPI REQUIRED hidapi-libusb hidapi)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.40)
 pkg_check_modules(GIO2 REQUIRED gio-2.0)
 

@@ -18,59 +18,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "co2mon.h"
-
-#include "config.h"
-
-static libusb_context *ctx = NULL;
-
-#ifndef HAVE_LIBUSB_STRERROR
-const char *
-libusb_strerror(enum libusb_error errcode)
-{
-    switch (errcode)
-    {
-    case LIBUSB_SUCCESS:
-        return "Success";
-    case LIBUSB_ERROR_IO:
-        return "Input/output error";
-    case LIBUSB_ERROR_INVALID_PARAM:
-        return "Invalid parameter";
-    case LIBUSB_ERROR_ACCESS:
-        return "Access denied (insufficient permissions)";
-    case LIBUSB_ERROR_NO_DEVICE:
-        return "No such device (it may have been disconnected)";
-    case LIBUSB_ERROR_NOT_FOUND:
-        return "Entity not found";
-    case LIBUSB_ERROR_BUSY:
-        return "Resource busy";
-    case LIBUSB_ERROR_TIMEOUT:
-        return "Operation timed out";
-    case LIBUSB_ERROR_OVERFLOW:
-        return "Overflow";
-    case LIBUSB_ERROR_PIPE:
-        return "Pipe error";
-    case LIBUSB_ERROR_INTERRUPTED:
-        return "System call interrupted (perhaps due to signal)";
-    case LIBUSB_ERROR_NO_MEM:
-        return "Insufficient memory";
-    case LIBUSB_ERROR_NOT_SUPPORTED:
-        return "Operation not supported or unimplemented on this platform";
-    case LIBUSB_ERROR_OTHER:
-        return "Other error";
-    }
-    return "Unknown error";
-}
-#endif
 
 int
 co2mon_init()
 {
-    int r = libusb_init(&ctx);
+    int r = hid_init();
     if (r < 0)
     {
-        fprintf(stderr, "libusb_init: %s\n", libusb_strerror(r));
+        fprintf(stderr, "hid_init: error\n");
     }
     return r;
 }
@@ -78,128 +36,44 @@ co2mon_init()
 void
 co2mon_exit()
 {
-    libusb_exit(ctx);
-}
-
-static int
-is_co2_device(libusb_device *dev)
-{
-    struct libusb_device_descriptor desc;
-    int r = libusb_get_device_descriptor(dev, &desc);
+    int r = hid_exit();
     if (r < 0)
     {
-        fprintf(stderr, "libusb_get_device_descriptor: %s\n", libusb_strerror(r));
-        return 0;
+        fprintf(stderr, "hid_exit: error\n");
     }
-
-    return desc.idVendor == 0x04d9 && desc.idProduct == 0xa052;
 }
 
-static libusb_device *
-co2mon_find_device(void)
-{
-    libusb_device **devs;
-    ssize_t cnt = libusb_get_device_list(ctx, &devs);
-    if (cnt < 0)
-    {
-        fprintf(stderr, "libusb_get_device_list: %s\n", libusb_strerror(cnt));
-        return NULL;
-    }
-
-    libusb_device *result = NULL;
-    for (int i = 0; devs[i] != NULL; ++i)
-    {
-        libusb_device *dev = devs[i];
-        if (is_co2_device(dev))
-        {
-            result = dev;
-            libusb_ref_device(dev);
-            break;
-        }
-    }
-
-    libusb_free_device_list(devs, 1);
-
-    return result;
-}
-
-static libusb_device_handle *
-co2mon_open_device_impl(libusb_device *dev)
-{
-    libusb_device_handle *handle;
-    int r = libusb_open(dev, &handle);
-    if (r != 0)
-    {
-        fprintf(stderr, "libusb_open: %s\n", libusb_strerror(r));
-        return NULL;
-    }
-
-#ifdef __linux__
-    libusb_detach_kernel_driver(handle, 0);
-#endif
-
-    r = libusb_claim_interface(handle, 0);
-    if (r != 0)
-    {
-        fprintf(stderr, "libusb_claim_interface: %s\n", libusb_strerror(r));
-        libusb_close(handle);
-        return NULL;
-    }
-
-    return handle;
-}
-
-libusb_device_handle *
+hid_device *
 co2mon_open_device()
 {
-    libusb_device *dev = co2mon_find_device();
+    hid_device *dev = hid_open(0x04d9, 0xa052, NULL);
     if (!dev)
     {
-        return NULL;
+        fprintf(stderr, "hid_open: error\n");
     }
-
-    libusb_device_handle *handle = co2mon_open_device_impl(dev);
-    if (!handle)
-    {
-        libusb_unref_device(dev);
-        return NULL;
-    }
-
-    return handle;
+    return dev;
 }
 
 void
-co2mon_close_device(libusb_device_handle *handle)
+co2mon_close_device(hid_device *dev)
 {
-    libusb_device *dev = libusb_get_device(handle);
-    libusb_close(handle);
-    libusb_unref_device(dev);
+    hid_close(dev);
 }
 
 int
-co2mon_device_path(libusb_device_handle *handle, char *str, size_t maxlen)
+co2mon_device_path(hid_device *dev, char *str, size_t maxlen)
 {
-    libusb_device *dev = libusb_get_device(handle);
-    snprintf(str, maxlen, "%04x:%04x",
-        libusb_get_bus_number(dev),
-        libusb_get_device_address(dev));
-    str[maxlen - 1] = '\0';
+    str[0] = '\0';
     return 1;
 }
 
 int
-co2mon_send_magic_table(libusb_device_handle *handle, co2mon_magic_table_t magic_table)
+co2mon_send_magic_table(hid_device *dev, co2mon_magic_table_t magic_table)
 {
-    int r = libusb_control_transfer(
-        handle,
-        LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
-        LIBUSB_REQUEST_SET_CONFIGURATION,
-        0x0300, 0,
-        magic_table, sizeof(co2mon_magic_table_t),
-        2000 /* milliseconds */);
+    int r = hid_send_feature_report(dev, magic_table, sizeof(co2mon_magic_table_t));
     if (r < 0 || r != sizeof(co2mon_magic_table_t))
     {
-        fprintf(stderr, "libusb_control_transfer(out, magic_table): %s\n", libusb_strerror(r));
+        fprintf(stderr, "hid_send_feature_report: error\n");
         return 0;
     }
     return 1;
@@ -244,22 +118,18 @@ decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_magic_table_t magic_t
 }
 
 int
-co2mon_read_data(libusb_device_handle *handle, co2mon_magic_table_t magic_table, co2mon_data_t result)
+co2mon_read_data(hid_device *dev, co2mon_magic_table_t magic_table, co2mon_data_t result)
 {
-    int actual_length;
-    co2mon_data_t data = {0};
-    int r = libusb_interrupt_transfer(handle,
-        LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_STANDARD | LIBUSB_RECIPIENT_INTERFACE,
-        data, sizeof(co2mon_data_t), &actual_length,
-        5000 /* milliseconds */);
-    if (r < 0)
+    co2mon_data_t data = { 0 };
+    int actual_length = hid_read_timeout(dev, data, sizeof(co2mon_data_t), 5000 /* milliseconds */);
+    if (actual_length < 0)
     {
-        fprintf(stderr, "libusb_interrupt_transfer(in, data): %s\n", libusb_strerror(r));
-        return r;
+        fprintf(stderr, "hid_read_timeout: error\n");
+        return actual_length;
     }
     if (actual_length != sizeof(co2mon_data_t))
     {
-        fprintf(stderr, "libusb_interrupt_transfer(in, data): trasferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(co2mon_data_t));
+        fprintf(stderr, "hid_read_timeout: trasferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(co2mon_data_t));
         return 0;
     }
 

@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include <glib.h>
@@ -100,14 +101,10 @@ device_loop(co2mon_device dev)
     while (1)
     {
         int r = co2mon_read_data(dev, magic_table, result);
-        if (r == LIBUSB_ERROR_NO_DEVICE)
+        if (r <= 0)
         {
-            fprintf(stderr, "Device has been disconnected\n");
+            fprintf(stderr, "Error while reading data from device\n");
             break;
-        }
-        else if (r <= 0)
-        {
-            continue;
         }
 
         if (result[4] != 0x0d)

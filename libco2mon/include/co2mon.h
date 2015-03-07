@@ -18,9 +18,9 @@
 #ifndef CO2MON_H_INCLUDED_
 #define CO2MON_H_INCLUDED_
 
-#include <libusb.h>
+#include <hidapi.h>
 
-typedef libusb_device_handle *co2mon_device;
+typedef hid_device *co2mon_device;
 
 typedef unsigned char co2mon_magic_table_t[8];
 typedef unsigned char co2mon_data_t[8];

@@ -23,7 +23,7 @@
 #include <glib.h>
 #include <gio/gio.h>
 
-#include "device.h"
+#include "co2mon.h"
 
 static const gchar service[] = "io.github.dmage.CO2Mon";
 static const gchar object_name[] = "/io/github/dmage/CO2Mon";

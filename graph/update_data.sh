@@ -8,7 +8,7 @@ update_rrd() {
 
 trap 'kill $(jobs -p)' EXIT
 
-../build/co2mond &
+../build/co2mond/co2mond &
 
 PYTHONUNBUFFERED=1 ./monitor.py | while read -r name value; do
     echo "$name $value"

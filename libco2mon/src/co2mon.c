@@ -1,17 +1,17 @@
 /*
  * co2mon - programming interface to CO2 sensor.
  * Copyright (C) 2015  Oleg Bulatov <oleg@bulatov.me>
-
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -19,7 +19,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "device.h"
+#include "co2mon.h"
+
+#include "config.h"
+
+static libusb_context *ctx = NULL;
 
 #ifndef HAVE_LIBUSB_STRERROR
 const char *
@@ -60,6 +64,23 @@ libusb_strerror(enum libusb_error errcode)
 }
 #endif
 
+int
+co2mon_init()
+{
+    int r = libusb_init(&ctx);
+    if (r < 0)
+    {
+        fprintf(stderr, "libusb_init: %s\n", libusb_strerror(r));
+    }
+    return r;
+}
+
+void
+co2mon_exit()
+{
+    libusb_exit(ctx);
+}
+
 static int
 is_co2_device(libusb_device *dev)
 {
@@ -78,7 +99,7 @@ libusb_device *
 co2mon_find_device(void)
 {
     libusb_device **devs;
-    ssize_t cnt = libusb_get_device_list(NULL, &devs);
+    ssize_t cnt = libusb_get_device_list(ctx, &devs);
     if (cnt < 0)
     {
         fprintf(stderr, "libusb_get_device_list: %s\n", libusb_strerror(cnt));

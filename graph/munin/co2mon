@@ -1,0 +1,57 @@
+#!/bin/sh
+# -*- sh -*-
+
+: << =cut
+
+=head1 NAME
+
+co2mon - Plugin to monitor MT8057 (RAD-0301) CO2 ppm values.
+
+=head1 NOTES
+
+
+=head1 CONFIGURATION
+
+The following environment variables are used by this plugin:
+
+ warning  - Warning CO2 ppm (Default: 800)
+ critical - Critical CO2 ppm (Default: 1200)
+
+=head1 MAGIC MARKERS:
+
+ #%# family=auto
+ #%# capabilities=autoconf
+
+=cut
+
+. $MUNIN_LIBDIR/plugins/plugin.sh
+
+print_values() {
+    co2=$(dbus-send --system --dest=io.github.dmage.CO2Mon --type=method_call --print-reply /io/github/dmage/CO2Mon io.github.dmage.CO2Mon.GetCO2 | grep -F uint16 | awk '{print $2}' )
+    [ ! -z "${co2}" ] && echo "co2.value ${co2}"
+}
+
+if [ "$1" = "autoconf" ]; then
+    if [ -z "$(print_values)" ] ; then
+	echo no
+    else
+	echo yes
+    fi
+    exit 0
+fi
+
+if [ "$1" = "config" ]; then
+    echo "graph_title CO2 ppm"
+#    echo 'graph_args --upper-limit 3000 -l 0'
+    echo 'graph_vlabel ppm'
+#    echo 'graph_scale no'
+    echo 'graph_category sensors'
+    echo "co2.label CO2 ppm"
+    warning=${warning:-800}
+    print_warning co2
+    critical=${critical:-1200}
+    print_critical co2
+    exit 0
+fi
+
+print_values

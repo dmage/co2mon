@@ -1,0 +1,57 @@
+#!/bin/sh
+# -*- sh -*-
+
+: << =cut
+
+=head1 NAME
+
+co2mon_temp - Plugin to monitor MT8057 (RAD-0301) CO2 temperature values.
+
+=head1 NOTES
+
+
+=head1 CONFIGURATION
+
+The following environment variables are used by this plugin:
+
+ warning  - Warning temp (Default: 30)
+ critical - Critical temp (Default: 35)
+
+=head1 MAGIC MARKERS:
+
+ #%# family=auto
+ #%# capabilities=autoconf
+
+=cut
+
+. $MUNIN_LIBDIR/plugins/plugin.sh
+
+print_values() {
+    temp=$(dbus-send --system --dest=io.github.dmage.CO2Mon --type=method_call --print-reply /io/github/dmage/CO2Mon io.github.dmage.CO2Mon.GetTemperature | grep -F double | awk '{print $2}' )
+    [ ! -z "${temp}" ] && echo "temp.value ${temp}"
+}
+
+if [ "$1" = "autoconf" ]; then
+    if [ -z "$(print_values)" ] ; then
+	echo no
+    else
+	echo yes
+    fi
+    exit 0
+fi
+
+if [ "$1" = "config" ]; then
+    echo "graph_title Temperature"
+#    echo 'graph_args --upper-limit 100 -l -10'
+    echo 'graph_vlabel Degreess Celsius'
+#    echo 'graph_scale no'
+    echo 'graph_category sensors'
+    echo "temp.label temp"
+    warning=${warning:-30}
+    print_warning temp
+    critical=${critical:-35}
+    print_critical temp
+    exit 0
+fi
+
+print_values

@@ -27,7 +27,7 @@ The following environment variables are used by this plugin:
 . $MUNIN_LIBDIR/plugins/plugin.sh
 
 print_values() {
-    temp=$(dbus-send --system --dest=io.github.dmage.CO2Mon --type=method_call --print-reply /io/github/dmage/CO2Mon io.github.dmage.CO2Mon.GetTemperature | grep -F double | awk '{print $2}' )
+    temp=$(cat /var/lib/co2mon/Tamb)
     [ ! -z "${temp}" ] && echo "temp.value ${temp}"
 }
 

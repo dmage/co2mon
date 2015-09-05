@@ -246,9 +246,9 @@ main_loop()
 
 int main(int argc, char *argv[])
 {
-    char *reldatadir;
-    char *pidfile;
-    char *logfile;
+    char *reldatadir = 0;
+    char *pidfile = 0;
+    char *logfile = 0;
 
     char c;
     int opterr = 0;

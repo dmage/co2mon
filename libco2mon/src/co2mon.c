@@ -68,10 +68,10 @@ co2mon_device_path(hid_device *dev, char *str, size_t maxlen)
 }
 
 int
-co2mon_send_magic_table(hid_device *dev, co2mon_magic_table_t magic_table)
+co2mon_send_magic_table(hid_device *dev, co2mon_data_t magic_table)
 {
-    int r = hid_send_feature_report(dev, magic_table, sizeof(co2mon_magic_table_t));
-    if (r < 0 || r != sizeof(co2mon_magic_table_t))
+    int r = hid_send_feature_report(dev, magic_table, sizeof(co2mon_data_t));
+    if (r < 0 || r != sizeof(co2mon_data_t))
     {
         fprintf(stderr, "hid_send_feature_report: error\n");
         return 0;
@@ -88,7 +88,7 @@ swap_char(unsigned char *a, unsigned char *b)
 }
 
 static void
-decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_magic_table_t magic_table)
+decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_data_t magic_table)
 {
     swap_char(&buf[0], &buf[2]);
     swap_char(&buf[1], &buf[4]);
@@ -118,7 +118,7 @@ decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_magic_table_t magic_t
 }
 
 int
-co2mon_read_data(hid_device *dev, co2mon_magic_table_t magic_table, co2mon_data_t result)
+co2mon_read_data(hid_device *dev, co2mon_data_t magic_table, co2mon_data_t result)
 {
     co2mon_data_t data = { 0 };
     int actual_length = hid_read_timeout(dev, data, sizeof(co2mon_data_t), 5000 /* milliseconds */);

@@ -6,4 +6,3 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra")
 
 add_subdirectory(libco2mon)
 add_subdirectory(co2mond)
-add_subdirectory(co2mon-dumper)

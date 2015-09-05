@@ -22,7 +22,6 @@
 
 typedef hid_device *co2mon_device;
 
-typedef unsigned char co2mon_magic_table_t[8];
 typedef unsigned char co2mon_data_t[8];
 
 extern int
@@ -41,9 +40,9 @@ extern int
 co2mon_device_path(co2mon_device dev, char *str, size_t maxlen);
 
 extern int
-co2mon_send_magic_table(co2mon_device dev, co2mon_magic_table_t magic_table);
+co2mon_send_magic_table(co2mon_device dev, co2mon_data_t magic_table);
 
 extern int
-co2mon_read_data(co2mon_device dev, co2mon_magic_table_t magic_table, co2mon_data_t result);
+co2mon_read_data(co2mon_device dev, co2mon_data_t magic_table, co2mon_data_t result);
 
 #endif

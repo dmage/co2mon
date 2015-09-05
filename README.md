@@ -2,39 +2,11 @@
 
 ## Usage
 
-    sudo cp -iv dbusrules/io.github.dmage.CO2Mon.conf /etc/dbus-1/system.d/
-
     mkdir build
     cd build
     cmake ..
     make
-
-    cd ../graph/
-    make graph.rrd
-    ./update_graph.sh >/dev/null &
-    xdg-open index.html &
-    ./update_data.sh
-
-## D-Bus Signals
-
-    dbus-monitor --system \
-        "type='signal',interface='io.github.dmage.CO2Mon',member='NewValue'"
-
-## D-Bus Methods
-
-    dbus-send --system \
-        --dest=io.github.dmage.CO2Mon \
-        --type=method_call \
-        --print-reply \
-        /io/github/dmage/CO2Mon \
-        io.github.dmage.CO2Mon.GetTemperature
-
-    dbus-send --system \
-        --dest=io.github.dmage.CO2Mon \
-        --type=method_call \
-        --print-reply \
-        /io/github/dmage/CO2Mon \
-        io.github.dmage.CO2Mon.GetCO2
+    ./co2mond/co2mond
 
 ## See also
 

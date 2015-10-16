@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
     char *pidfile = 0;
     char *logfile = 0;
 
-    char c;
+    int c;
     int opterr = 0;
     int show_help = 0;
     while ((c = getopt(argc, argv, ":dhuD:l:p:")) != -1)

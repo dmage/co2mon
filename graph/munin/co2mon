@@ -5,7 +5,7 @@
 
 =head1 NAME
 
-co2mon - Plugin to monitor MT8057 (RAD-0301) CO2 ppm values.
+co2mon - Plugin to monitor MT8057 (RAD-0301) CO2 ppm and temperature values.
 
 =head1 NOTES
 
@@ -14,8 +14,10 @@ co2mon - Plugin to monitor MT8057 (RAD-0301) CO2 ppm values.
 
 The following environment variables are used by this plugin:
 
- warning  - Warning CO2 ppm (Default: 800)
- critical - Critical CO2 ppm (Default: 1200)
+ co2_warning  - Warning CO2 ppm (Default: 800)
+ co2_critical - Critical CO2 ppm (Default: 1200)
+ temp_warning  - Warning temp (Default: 30)
+ temp_critical - Critical temp (Default: 35)
 
 =head1 MAGIC MARKERS:
 
@@ -25,10 +27,15 @@ The following environment variables are used by this plugin:
 =cut
 
 . $MUNIN_LIBDIR/plugins/plugin.sh
+is_multigraph
 
 print_values() {
+    echo 'multigraph co2mon'
     co2=$(cat /var/lib/co2mon/CntR)
     [ ! -z "${co2}" ] && echo "co2.value ${co2}"
+    echo 'multigraph co2mon_temp'
+    temp=$(cat /var/lib/co2mon/Tamb)
+    [ ! -z "${temp}" ] && echo "temp.value ${temp}"
 }
 
 if [ "$1" = "autoconf" ]; then
@@ -41,16 +48,28 @@ if [ "$1" = "autoconf" ]; then
 fi
 
 if [ "$1" = "config" ]; then
+    echo 'multigraph co2mon'
     echo "graph_title CO2 ppm"
 #    echo 'graph_args --upper-limit 3000 -l 0'
     echo 'graph_vlabel ppm'
 #    echo 'graph_scale no'
     echo 'graph_category sensors'
     echo "co2.label CO2 ppm"
-    warning=${warning:-800}
-    print_warning co2
-    critical=${critical:-1200}
-    print_critical co2
+    co2_warning=${co2_warning:-800}
+    co2_critical=${co2_critical:-1200}
+    print_thresholds 'co2'
+
+    echo 'multigraph co2mon_temp'
+    echo "graph_title Temperature"
+#    echo 'graph_args --upper-limit 100 -l -10'
+    echo 'graph_vlabel Degreess Celsius'
+#    echo 'graph_scale no'
+    echo 'graph_category sensors'
+    echo "temp.label temp"
+    temp_warning=${temp_warning:-30}
+    temp_critical=${temp_critical:-35}
+    print_thresholds 'temp'
+
     exit 0
 fi
 

@@ -31,10 +31,10 @@ is_multigraph
 
 print_values() {
     echo 'multigraph co2mon'
-    co2=$(cat /var/lib/co2mon/CntR)
+    read co2 < /var/lib/co2mon/CntR
     [ ! -z "${co2}" ] && echo "co2.value ${co2}"
     echo 'multigraph co2mon_temp'
-    temp=$(cat /var/lib/co2mon/Tamb)
+    read temp < /var/lib/co2mon/Tamb
     [ ! -z "${temp}" ] && echo "temp.value ${temp}"
 }
 

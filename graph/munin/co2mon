@@ -32,13 +32,20 @@ is_multigraph
 DATADIR='/var/lib/co2mon'
 CO2_FILE="$DATADIR/CntR"
 TEMP_FILE="$DATADIR/Tamb"
+HEARTBEAT_FILE="$DATADIR/heartbeat"
 
 print_values() {
-    echo 'multigraph co2mon'
     read co2 < "$CO2_FILE"
+    read temp < "$TEMP_FILE"
+    read heartbeat_sec < "$HEARTBEAT_FILE"
+    if [ $(($(date +%s)-heartbeat_sec)) -gt 60 ]; then
+        co2='U'
+        temp='U'
+    fi
+
+    echo 'multigraph co2mon'
     echo "co2.value ${co2:-U}"
     echo 'multigraph co2mon_temp'
-    read temp < "$TEMP_FILE"
     echo "temp.value ${temp:-U}"
 }
 

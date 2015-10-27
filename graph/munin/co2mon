@@ -29,20 +29,24 @@ The following environment variables are used by this plugin:
 . $MUNIN_LIBDIR/plugins/plugin.sh
 is_multigraph
 
+DATADIR='/var/lib/co2mon'
+CO2_FILE="$DATADIR/CntR"
+TEMP_FILE="$DATADIR/Tamb"
+
 print_values() {
     echo 'multigraph co2mon'
-    read co2 < /var/lib/co2mon/CntR
-    [ ! -z "${co2}" ] && echo "co2.value ${co2}"
+    read co2 < "$CO2_FILE"
+    echo "co2.value ${co2:-U}"
     echo 'multigraph co2mon_temp'
-    read temp < /var/lib/co2mon/Tamb
-    [ ! -z "${temp}" ] && echo "temp.value ${temp}"
+    read temp < "$TEMP_FILE"
+    echo "temp.value ${temp:-U}"
 }
 
 if [ "$1" = "autoconf" ]; then
-    if [ -z "$(print_values)" ] ; then
-	echo no
-    else
+    if [ -s "$CO2_FILE" -o -s "$TEMP_FILE" ] ; then
 	echo yes
+    else
+	echo no
     fi
     exit 0
 fi

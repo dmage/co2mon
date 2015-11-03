@@ -1,12 +1,19 @@
 # Software for CO2 Monitor
 
-## Usage
+## Compiling
 
     mkdir build
     cd build
     cmake ..
     make
     ./co2mond/co2mond
+
+## Installation
+
+### Arch Linux
+[There is PKGBUILD in AUR](https://aur.archlinux.org/packages/co2mon-git/). The simplest way to [install](https://wiki.archlinux.org/index.php/Arch_User_Repository#Installing_packages) is using yaourt:
+
+`yaourt -S co2mon-git`
 
 ## See also
 

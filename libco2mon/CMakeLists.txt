@@ -29,3 +29,7 @@ aux_source_directory(src SRC_LIST)
 add_library(co2mon ${SRC_LIST})
 target_link_libraries(co2mon
     ${HIDAPI_LIBRARIES})
+
+install(TARGETS co2mon
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)

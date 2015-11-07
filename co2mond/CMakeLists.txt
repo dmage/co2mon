@@ -15,3 +15,6 @@ add_executable(co2mond ${SRC_LIST})
 target_link_libraries(co2mond
     co2mon
     ${HIDAPI_LIBRARIES})
+
+install(TARGETS co2mond
+    RUNTIME DESTINATION bin)

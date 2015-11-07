@@ -17,4 +17,4 @@ target_link_libraries(co2mond
     ${HIDAPI_LIBRARIES})
 
 install(TARGETS co2mond
-    RUNTIME DESTINATION bin)
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -29,6 +29,8 @@ aux_source_directory(src SRC_LIST)
 add_library(co2mon ${SRC_LIST})
 target_link_libraries(co2mon
     ${HIDAPI_LIBRARIES})
+set_target_properties(co2mon PROPERTIES
+    SOVERSION 1)
 
 install(TARGETS co2mon
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

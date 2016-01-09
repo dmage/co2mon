@@ -129,7 +129,7 @@ co2mon_read_data(hid_device *dev, co2mon_data_t magic_table, co2mon_data_t resul
     }
     if (actual_length != sizeof(co2mon_data_t))
     {
-        fprintf(stderr, "hid_read_timeout: trasferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(co2mon_data_t));
+        fprintf(stderr, "hid_read_timeout: transferred %d bytes, expected %lu bytes\n", actual_length, (unsigned long)sizeof(co2mon_data_t));
         return 0;
     }
 

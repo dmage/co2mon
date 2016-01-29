@@ -8,10 +8,10 @@ update_rrd() {
 
 ../build/co2mond/co2mond | while read -r name value; do
     echo "$name $value"
-    if [ "$name" == "CntR" ]; then
+    if [ "$name" = "CntR" ]; then
         last_co2=$value
         update_rrd
-    elif [ "$name" == "Tamb" ]; then
+    elif [ "$name" = "Tamb" ]; then
         last_temp=$value
         update_rrd
     fi

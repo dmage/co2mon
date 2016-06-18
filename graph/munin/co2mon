@@ -38,15 +38,11 @@ print_values() {
     read co2 < "$CO2_FILE"
     read temp < "$TEMP_FILE"
     read heartbeat_sec < "$HEARTBEAT_FILE"
-    if [ $(($(date +%s)-heartbeat_sec)) -gt 60 ]; then
-        co2='U'
-        temp='U'
-    fi
 
     echo 'multigraph co2mon'
-    echo "co2.value ${co2:-U}"
+    echo "co2.value ${heartbeat_sec:+$heartbeat_sec:}${co2:-U}"
     echo 'multigraph co2mon_temp'
-    echo "temp.value ${temp:-U}"
+    echo "temp.value ${heartbeat_sec:+$heartbeat_sec:}${temp:-U}"
 }
 
 if [ "$1" = "autoconf" ]; then

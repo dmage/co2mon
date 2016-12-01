@@ -1,13 +1,5 @@
 # Software for CO2 Monitor
 
-## Compiling
-
-    mkdir build
-    cd build
-    cmake ..
-    make
-    ./co2mond/co2mond
-
 ## Installation
 
 ### Arch Linux
@@ -25,6 +17,20 @@ Install repo:
 Install co2mon:
 
 `dnf install co2mon`
+
+### From sources
+
+    # macOS
+    brew install cmake pkg-config hidapi
+
+    # Ubuntu
+    apt-get install cmake g++ pkg-config libhidapi-dev
+
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ./co2mond/co2mond
 
 ## See also
 

@@ -1,0 +1,14 @@
+# Don't forget to 'LoadPlugin python' or 'AutoLoadPlugin true'
+
+<Plugin python>
+	ModulePath "/etc/collectd_python_plugins"
+	LogTraces true
+	Interactive false
+	Import "co2mon"
+
+	#<Module co2mon>
+	#	#This is default value
+	#	datadir "/var/lib/co2mon/"
+	#</Module>
+</Plugin>
+

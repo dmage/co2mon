@@ -18,6 +18,7 @@
 
 #define _BSD_SOURCE
 #define _XOPEN_SOURCE 700
+#define _DARWIN_C_SOURCE /* daemon() on macOS */
 
 #include <fcntl.h>
 #include <stdint.h>

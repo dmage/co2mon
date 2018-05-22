@@ -1,0 +1,11 @@
+language: c
+dist: trusty
+compiler:
+  - clang
+  - gcc
+addons:
+  apt:
+    packages:
+      - cmake
+      - libhidapi-dev
+script: mkdir build && cd build && cmake .. && cmake --build .

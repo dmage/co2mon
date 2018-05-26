@@ -54,6 +54,17 @@ co2mon_open_device()
     return dev;
 }
 
+hid_device *
+co2mon_open_device_path(const char *path)
+{
+    hid_device *dev = hid_open_path(path);
+    if (!dev)
+    {
+        fprintf(stderr, "hid_open_path: error\n");
+    }
+    return dev;
+}
+
 void
 co2mon_close_device(hid_device *dev)
 {

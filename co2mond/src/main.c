@@ -38,6 +38,7 @@
 
 int daemonize = 0;
 int print_unknown = 0;
+const char *devicefile = NULL;
 char *datadir;
 
 uint16_t co2mon_data[256];
@@ -223,13 +224,23 @@ device_loop(co2mon_device dev)
     }
 }
 
+static co2mon_device
+open_device()
+{
+    if (devicefile)
+    {
+        return co2mon_open_device_path(devicefile);
+    }
+    return co2mon_open_device();
+}
+
 static void
 main_loop()
 {
     int error_shown = 0;
     while (1)
     {
-        co2mon_device dev = co2mon_open_device();
+        co2mon_device dev = open_device();
         if (dev == NULL)
         {
             if (!error_shown)
@@ -239,7 +250,9 @@ main_loop()
             }
             sleep(1);
             continue;
-        } else {
+        }
+        else
+        {
             error_shown = 0;
         }
 
@@ -258,7 +271,7 @@ int main(int argc, char *argv[])
     int c;
     int opterr = 0;
     int show_help = 0;
-    while ((c = getopt(argc, argv, ":dhuD:l:p:")) != -1)
+    while ((c = getopt(argc, argv, ":dhuD:f:l:p:")) != -1)
     {
         switch (c)
         {
@@ -273,6 +286,9 @@ int main(int argc, char *argv[])
             break;
         case 'D':
             reldatadir = optarg;
+            break;
+        case 'f':
+            devicefile = optarg;
             break;
         case 'l':
             logfile = optarg;
@@ -291,7 +307,7 @@ int main(int argc, char *argv[])
     }
     if (show_help || opterr || optind != argc)
     {
-        fprintf(stderr, "usage: co2mond [-dhu] [-D datadir] [-p pidfle] [-l logfile]\n");
+        fprintf(stderr, "usage: co2mond [-dhu] [-D datadir] [-f device] [-p pidfle] [-l logfile]\n");
         if (show_help)
         {
             fprintf(stderr, "\n");
@@ -300,6 +316,12 @@ int main(int argc, char *argv[])
             fprintf(stderr, "  -u    print values for unknown items\n");
             fprintf(stderr, "  -D datadir\n");
             fprintf(stderr, "        store values from the sensor in datadir\n");
+            fprintf(stderr, "  -f devicefile\n");
+#ifdef __linux__
+            fprintf(stderr, "        path to a device (e.g., /dev/hidraw0)\n");
+#else
+            fprintf(stderr, "        path to a device\n");
+#endif
             fprintf(stderr, "  -p pidfile\n");
             fprintf(stderr, "        write PID to a file named pidfile\n");
             fprintf(stderr, "  -l logfile\n");

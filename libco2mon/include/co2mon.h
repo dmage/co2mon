@@ -33,6 +33,9 @@ co2mon_exit();
 extern co2mon_device
 co2mon_open_device();
 
+extern co2mon_device
+co2mon_open_device_path(const char *path);
+
 extern void
 co2mon_close_device(co2mon_device dev);
 

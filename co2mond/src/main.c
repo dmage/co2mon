@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _BSD_SOURCE
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 700 /* strnlen */
+#define _BSD_SOURCE /* daemon() in glibc before 2.19 */
+#define _DEFAULT_SOURCE /* _BSD_SOURCE is deprecated in glibc 2.19+ */
 #define _DARWIN_C_SOURCE /* daemon() on macOS */
 
 #include <fcntl.h>

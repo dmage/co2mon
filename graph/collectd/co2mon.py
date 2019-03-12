@@ -1,8 +1,8 @@
 import collectd
 import os
 
-CO2MOND_DATADIR='/var/lib/co2mon/'
-
+CO2MOND_DATADIR = '/var/lib/co2mon/'
+vl = collectd.Values(plugin='co2mon')
 
 def read_metric(name):
     v = open(os.path.join(CO2MOND_DATADIR, name)).read()
@@ -13,12 +13,16 @@ def read_metric(name):
 
 
 def read_callback(data=None):
-    vl = collectd.Values(plugin='co2mon')
-    vl.plugin = 'co2mon'
+    global vl
     try:
-        vl.time = read_metric('heartbeat')
+        heartbeat = read_metric('heartbeat')
     except:
-        pass
+        heartbeat = None
+    if heartbeat:
+        if heartbeat > vl.time:
+            vl.time = heartbeat
+        else:
+            return
     co2 = [read_metric('CntR')]
     temp = [read_metric('Tamb')]
     vl.dispatch(values=co2, type='gauge', type_instance='co2_ppm')

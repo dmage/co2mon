@@ -14,6 +14,7 @@ aux_source_directory(src SRC_LIST)
 add_executable(co2mond ${SRC_LIST})
 target_link_libraries(co2mond
     co2mon
+    pthread
     ${HIDAPI_LIBRARIES})
 
 install(TARGETS co2mond

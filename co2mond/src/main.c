@@ -21,6 +21,8 @@
 #define _DEFAULT_SOURCE /* _BSD_SOURCE is deprecated in glibc 2.19+ */
 #define _DARWIN_C_SOURCE /* daemon() on macOS */
 
+#include <pthread.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,6 +30,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <err.h>
 
 #include "co2mon.h"
 
@@ -42,7 +48,45 @@ int print_unknown = 0;
 const char *devicefile = NULL;
 char *datadir;
 
-uint16_t co2mon_data[256];
+struct co2mon_state {
+    uint16_t data[256];
+    uint8_t seen[32];
+    time_t heatbeat;
+    unsigned int deverr;
+};
+
+pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct co2mon_state co2mon;
+
+static int
+bitarr_isset(uint8_t* bitarr, unsigned int ndx)
+{
+    return bitarr[ndx >> 3] & (1u << (ndx & 0x07u)) ? 1 : 0;
+}
+
+static void
+bitarr_set(uint8_t* bitarr, unsigned int ndx)
+{
+    bitarr[ndx >> 3] |= 1u << (ndx & 0x07u);
+}
+
+static void
+state_lock()
+{
+    if (pthread_mutex_lock(&state_mutex) != 0)
+    {
+        err(EXIT_FAILURE, "pthread_mutex_lock");
+    }
+}
+
+static void
+state_unlock()
+{
+    if (pthread_mutex_unlock(&state_mutex) != 0)
+    {
+        err(EXIT_FAILURE, "pthread_mutex_unlock");
+    }
+}
 
 static int
 lock(int fd, short int type)
@@ -122,8 +166,197 @@ static void
 write_heartbeat()
 {
     char buf[VALUE_MAX];
-    snprintf(buf, VALUE_MAX, "%lld", (long long)time(0));
+    const time_t now = time(0);
+    snprintf(buf, VALUE_MAX, "%lld", (long long)now);
     write_value("heartbeat", buf);
+    state_lock();
+    co2mon.heatbeat = now;
+    state_unlock();
+}
+
+static int
+read_match_path(const int fd)
+{
+    // Prefix has no \r\n to support HTTP/1.0 requests with no headers.
+    const char *prefix = "GET /metrics HTTP/1.";
+    const int len = strlen(prefix);
+    for (int i = 0; i < len; ++i)
+    {
+        char next;
+        const int rv = read(fd, &next, 1);
+        if (rv == 0) // EOF
+        {
+            return -1;
+        }
+        if (rv == -1)
+        {
+            perror("read");
+            return -1;
+        }
+        if (rv != 1 || next != prefix[i]) // mismatch
+        {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int
+read_find_crlfcrlf(const int fd)
+{
+    const char *substring = "\x0d\x0a\x0d\x0a";
+    const int len = strlen(substring);
+    // automata is tivial as `substring` has no repeated chars
+    for (int i = 0; i < len; ++i)
+    {
+        assert(i >= 0);
+        char next;
+        const int rv = read(fd, &next, 1);
+        if (rv == 0) // EOF
+        {
+            return -1;
+        }
+        if (rv == -1)
+        {
+            perror("read");
+            return -1;
+        }
+        if (rv != 1) // WAT?
+        {
+            return -1;
+        }
+        if (next != substring[i])
+        {
+            if (next == substring[0])
+            {
+                i = 0;
+            }
+            else
+            {
+                i = -1;
+            }
+        }
+    }
+    return 0;
+}
+
+static void*
+prometheus_thread(void *arg)
+{
+    const int listen_fd = (ssize_t)arg;
+    while (1) {
+        const int client_fd = accept(listen_fd, NULL, NULL);
+        const struct timeval maxdelay = { 5, 0 }; // 5 seconds, just like co2mon_read_data()
+        struct co2mon_state copy;
+        FILE* out = NULL;
+
+        if (client_fd == -1)
+        {
+            perror("accept");
+            continue;
+        }
+
+        if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &maxdelay, sizeof(maxdelay)) != 0 ||
+            setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &maxdelay, sizeof(maxdelay)) != 0)
+        {
+            perror("setsockopt");
+            goto cleanup;
+        }
+
+        if (read_match_path(client_fd) != 0 || read_find_crlfcrlf(client_fd) != 0)
+        {
+            goto cleanup;
+        }
+
+        out = fdopen(client_fd, "a");
+        if (!out)
+        {
+            perror("fdopen");
+            goto cleanup;
+        }
+
+        state_lock();
+        memcpy(&copy, &co2mon, sizeof(copy));
+        state_unlock();
+
+        if (!bitarr_isset(copy.seen, CODE_TAMB) || !bitarr_isset(copy.seen, CODE_CNTR))
+        {
+            fprintf(out,
+                "HTTP/1.0 503 Service Unavailable\r\n"
+                "Server: co2mond\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "Device not ready.\r\n"
+            );
+            goto flush;
+        }
+
+        fprintf(out,
+            "HTTP/1.0 200 OK\r\n"
+            "Server: co2mond\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        );
+        if (print_unknown)
+        {
+            int has_unknown = 0;
+            for (int i = 0; i < sizeof(copy.data) / sizeof(copy.data[0]); ++i)
+            {
+                if (bitarr_isset(copy.seen, i) && i != CODE_TAMB && i != CODE_CNTR)
+                {
+                    has_unknown = 1;
+                    break;
+                }
+            }
+            if (has_unknown)
+            {
+                fprintf(out,
+                    "# HELP co2mon_unknown Unknown value.\n"
+                    "# TYPE co2mon_unknown gauge\n"
+                );
+                for (int i = 0; i < sizeof(copy.data) / sizeof(copy.data[0]); ++i)
+                {
+                    if (bitarr_isset(copy.seen, i) && i != CODE_TAMB && i != CODE_CNTR)
+                    {
+                        fprintf(out, "co2mon_unknown{key=\"x%02x\"} %d\n", i, copy.data[i]);
+                    }
+                }
+            }
+        }
+        fprintf(out,
+            "# HELP co2mon_temp_celsius Ambient temperature.\n"
+            "# TYPE co2mon_temp_celsius gauge\n"
+            "co2mon_temp_celsius %.4f\n"
+            "# HELP co2mon_co2_ppm Concentration of CO2, parts per million.\n"
+            "# TYPE co2mon_co2_ppm gauge\n"
+            "co2mon_co2_ppm %d\n"
+            "# HELP co2mon_device_errors_total CO2 monitor device error counter.\n"
+            "# TYPE co2mon_device_errors_total counter\n"
+            "co2mon_device_errors_total %d\n"
+            "# HELP co2mon_heartbeat_time_seconds CO2 monitor heartbeat timestamp.\n"
+            "# TYPE co2mon_heartbeat_time_seconds gauge\n"
+            "co2mon_heartbeat_time_seconds %lld\n",
+            decode_temperature(copy.data[CODE_TAMB]),
+            copy.data[CODE_CNTR],
+            copy.deverr,
+            (long long)copy.heatbeat
+        );
+flush:
+        fflush(out);
+        if (shutdown(client_fd, SHUT_WR) != 0)
+        {
+            perror("shutdown");
+            goto cleanup;
+        }
+        char byte;
+        read(client_fd, &byte, 1); // wait till EOF (or timeout) before calling close()
+cleanup:
+        if (out)
+        {
+            fclose(out);
+        }
+        close(client_fd);
+    }
 }
 
 static void
@@ -131,24 +364,39 @@ device_loop(co2mon_device dev)
 {
     co2mon_data_t magic_table = { 0 };
     co2mon_data_t result;
+    uint16_t written_tamb = 0;
+    uint16_t written_cntr = 0;
 
     if (!co2mon_send_magic_table(dev, magic_table))
     {
+        state_lock();
+        co2mon.deverr++;
+        state_unlock();
         fprintf(stderr, "Unable to send magic table to CO2 device\n");
         return;
     }
+
+    state_lock();
+    memset(co2mon.seen, 0, sizeof(co2mon.seen));
+    state_unlock();
 
     while (1)
     {
         int r = co2mon_read_data(dev, magic_table, result);
         if (r <= 0)
         {
+            state_lock();
+            co2mon.deverr++;
+            state_unlock();
             fprintf(stderr, "Error while reading data from device\n");
             break;
         }
 
         if (result[4] != 0x0d)
         {
+            state_lock();
+            co2mon.deverr++;
+            state_unlock();
             fprintf(stderr, "Unexpected data from device (data[4] = %02hhx, want 0x0d)\n", result[4]);
             continue;
         }
@@ -161,6 +409,9 @@ device_loop(co2mon_device dev)
         checksum = r0 + r1 + r2;
         if (checksum != r3)
         {
+            state_lock();
+            co2mon.deverr++;
+            state_unlock();
             fprintf(stderr, "checksum error (%02hhx, await %02hhx)\n", checksum, r3);
             continue;
         }
@@ -179,11 +430,11 @@ device_loop(co2mon_device dev)
                 fflush(stdout);
             }
 
-            if (co2mon_data[r0] != w)
+            if (written_tamb != w)
             {
                 if (write_value("Tamb", buf))
                 {
-                    co2mon_data[r0] = w;
+                    written_tamb = w;
                 }
             }
 
@@ -203,11 +454,11 @@ device_loop(co2mon_device dev)
                 fflush(stdout);
             }
 
-            if (co2mon_data[r0] != w)
+            if (written_cntr != w)
             {
                 if (write_value("CntR", buf))
                 {
-                    co2mon_data[r0] = w;
+                    written_cntr = w;
                 }
             }
 
@@ -220,8 +471,12 @@ device_loop(co2mon_device dev)
                 printf("0x%02hhx\t%d\n", r0, (int)w);
                 fflush(stdout);
             }
-            co2mon_data[r0] = w;
         }
+
+        state_lock();
+        co2mon.data[r0] = w;
+        bitarr_set(co2mon.seen, r0);
+        state_unlock();
     }
 }
 
@@ -266,13 +521,14 @@ main_loop()
 int main(int argc, char *argv[])
 {
     char *reldatadir = 0;
+    char *promaddr = 0;
     char *pidfile = 0;
     char *logfile = 0;
 
     int c;
     int opterr = 0;
     int show_help = 0;
-    while ((c = getopt(argc, argv, ":dhuD:f:l:p:")) != -1)
+    while ((c = getopt(argc, argv, ":dhuD:P:f:l:p:")) != -1)
     {
         switch (c)
         {
@@ -287,6 +543,9 @@ int main(int argc, char *argv[])
             break;
         case 'D':
             reldatadir = optarg;
+            break;
+        case 'P':
+            promaddr = optarg;
             break;
         case 'f':
             devicefile = optarg;
@@ -317,6 +576,8 @@ int main(int argc, char *argv[])
             fprintf(stderr, "  -u    print values for unknown items\n");
             fprintf(stderr, "  -D datadir\n");
             fprintf(stderr, "        store values from the sensor in datadir\n");
+            fprintf(stderr, "  -P host:port\n");
+            fprintf(stderr, "        address on which to expose metrics\n");
             fprintf(stderr, "  -f devicefile\n");
 #ifdef __linux__
             fprintf(stderr, "        path to a device (e.g., /dev/hidraw0)\n");
@@ -331,9 +592,9 @@ int main(int argc, char *argv[])
         }
         exit(1);
     }
-    if (daemonize && !reldatadir)
+    if (daemonize && !reldatadir && !promaddr)
     {
-        fprintf(stderr, "co2mond: it is useless to use -d without -D.\n");
+        fprintf(stderr, "co2mond: it is useless to use -d without -D or -P.\n");
         exit(1);
     }
 
@@ -369,6 +630,67 @@ int main(int argc, char *argv[])
         }
     }
 
+    int listen_fd = -1;
+    if (promaddr)
+    {
+        char *copy = strdup(promaddr);
+        char *colon = strrchr(copy, ':');
+        char *port = colon ? colon + 1 : copy;
+        if (colon)
+        {
+            *colon = '\0';
+        }
+        char *host =
+            (!colon || copy[0] == '\0') ? NULL :
+            (copy[0] == '[') ? copy + 1 :
+            copy;
+        if (host)
+        {
+            size_t hlen = strlen(host);
+            if (copy[0] == '[' && hlen > 0 && host[hlen - 1] == ']')
+            {
+                host[hlen - 1] = '\0';
+            }
+        }
+
+        struct addrinfo hints, *res;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_NUMERICHOST | AI_PASSIVE | AI_NUMERICSERV;
+
+        int gai_errno = getaddrinfo(host, port, &hints, &res);
+        if (gai_errno != 0)
+        {
+            errx(EXIT_FAILURE, "getaddrinfo(%s): %s", promaddr, gai_strerror(gai_errno));
+        }
+
+        listen_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        if (listen_fd == -1)
+        {
+            err(EXIT_FAILURE, "socket");
+        }
+
+        int on = 1;
+        if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != 0)
+        {
+            err(EXIT_FAILURE, "setsockopt(SO_REUSEADDR)");
+        }
+
+        if (bind(listen_fd, res->ai_addr, res->ai_addrlen) != 0)
+        {
+            err(EXIT_FAILURE, "bind");
+        }
+
+        if (listen(listen_fd, 128) != 0)
+        {
+            err(EXIT_FAILURE, "listen");
+        }
+
+        free(copy);
+        freeaddrinfo(res);
+    }
+
     if (daemonize)
     {
         if (daemon(0, 0) == -1)
@@ -385,6 +707,20 @@ int main(int argc, char *argv[])
         if (!write_data(pidfd, pid))
         {
             exit(1);
+        }
+    }
+
+    if (listen_fd != -1)
+    {
+        pthread_t tid;
+        if (pthread_create(&tid, NULL, prometheus_thread, (void*)((size_t)listen_fd)) != 0)
+        {
+            err(EXIT_FAILURE, "pthread_create");
+        }
+
+        if (pthread_detach(tid) != 0)
+        {
+            err(EXIT_FAILURE, "pthread_detach");
         }
     }
 

@@ -24,6 +24,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,25 +176,15 @@ write_heartbeat()
 }
 
 static int
-read_match_path(const int fd)
+read_match_path(FILE* fd)
 {
     // Prefix has no \r\n to support HTTP/1.0 requests with no headers.
     const char *prefix = "GET /metrics HTTP/1.";
     const int len = strlen(prefix);
     for (int i = 0; i < len; ++i)
     {
-        char next;
-        const int rv = read(fd, &next, 1);
-        if (rv == 0) // EOF
-        {
-            return -1;
-        }
-        if (rv == -1)
-        {
-            perror("read");
-            return -1;
-        }
-        if (rv != 1 || next != prefix[i]) // mismatch
+        int next = fgetc(fd);
+        if (next == EOF || next != prefix[i]) // EOF or mismatch
         {
             return -1;
         }
@@ -202,7 +193,7 @@ read_match_path(const int fd)
 }
 
 static int
-read_find_crlfcrlf(const int fd)
+read_find_crlfcrlf(FILE* fd)
 {
     const char *substring = "\x0d\x0a\x0d\x0a";
     const int len = strlen(substring);
@@ -210,18 +201,8 @@ read_find_crlfcrlf(const int fd)
     for (int i = 0; i < len; ++i)
     {
         assert(i >= 0);
-        char next;
-        const int rv = read(fd, &next, 1);
-        if (rv == 0) // EOF
-        {
-            return -1;
-        }
-        if (rv == -1)
-        {
-            perror("read");
-            return -1;
-        }
-        if (rv != 1) // WAT?
+        int next = fgetc(fd);
+        if (next == EOF)
         {
             return -1;
         }
@@ -263,16 +244,23 @@ prometheus_thread(void *arg)
             goto cleanup;
         }
 
-        if (read_match_path(client_fd) != 0 || read_find_crlfcrlf(client_fd) != 0)
-        {
-            goto cleanup;
-        }
-
-        out = fdopen(client_fd, "a");
+        out = fdopen(client_fd, "a+b");
         if (!out)
         {
             perror("fdopen");
             goto cleanup;
+        }
+
+        if (read_match_path(out) != 0 || read_find_crlfcrlf(out) != 0)
+        {
+            fprintf(out,
+                "HTTP/1.0 400 Bad Request\r\n"
+                "Server: co2mond\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "goto /metrics;\r\n"
+            );
+            goto flush;
         }
 
         state_lock();
@@ -297,6 +285,9 @@ prometheus_thread(void *arg)
             "Connection: close\r\n"
             "\r\n"
         );
+
+        // Note, HTTP has \r\n and Prometheus uses \n as line separator.
+
         if (print_unknown)
         {
             int has_unknown = 0;
@@ -348,14 +339,17 @@ flush:
             perror("shutdown");
             goto cleanup;
         }
-        char byte;
-        read(client_fd, &byte, 1); // wait till EOF (or timeout) before calling close()
+        fgetc(out); // wait till EOF (or timeout) before calling close()
 cleanup:
         if (out)
         {
             fclose(out);
         }
-        close(client_fd);
+        else
+        {
+            close(client_fd);
+        }
+
     }
 }
 
@@ -685,6 +679,11 @@ int main(int argc, char *argv[])
         if (listen(listen_fd, 128) != 0)
         {
             err(EXIT_FAILURE, "listen");
+        }
+
+        if (signal(SIGPIPE, SIG_IGN) != 0)
+        {
+            err(EXIT_FAILURE, "signal(SIGPIPE, SIG_IGN)");
         }
 
         free(copy);

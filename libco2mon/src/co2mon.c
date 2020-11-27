@@ -22,14 +22,17 @@
 
 #include "co2mon.h"
 
+static int decode_data = 1;
+
 int
-co2mon_init()
+co2mon_init(int decode)
 {
     int r = hid_init();
     if (r < 0)
     {
         fprintf(stderr, "hid_init: error\n");
     }
+    decode_data = decode;
     return r;
 }
 
@@ -101,31 +104,33 @@ swap_char(unsigned char *a, unsigned char *b)
 static void
 decode_buf(co2mon_data_t result, co2mon_data_t buf, co2mon_data_t magic_table)
 {
-    swap_char(&buf[0], &buf[2]);
-    swap_char(&buf[1], &buf[4]);
-    swap_char(&buf[3], &buf[7]);
-    swap_char(&buf[5], &buf[6]);
+    if (decode_data) {
+        swap_char(&buf[0], &buf[2]);
+        swap_char(&buf[1], &buf[4]);
+        swap_char(&buf[3], &buf[7]);
+        swap_char(&buf[5], &buf[6]);
 
-    for (int i = 0; i < 8; ++i)
-    {
-        buf[i] ^= magic_table[i];
-    }
+        for (int i = 0; i < 8; ++i)
+        {
+            buf[i] ^= magic_table[i];
+        }
 
-    unsigned char tmp = (buf[7] << 5);
-    result[7] = (buf[6] << 5) | (buf[7] >> 3);
-    result[6] = (buf[5] << 5) | (buf[6] >> 3);
-    result[5] = (buf[4] << 5) | (buf[5] >> 3);
-    result[4] = (buf[3] << 5) | (buf[4] >> 3);
-    result[3] = (buf[2] << 5) | (buf[3] >> 3);
-    result[2] = (buf[1] << 5) | (buf[2] >> 3);
-    result[1] = (buf[0] << 5) | (buf[1] >> 3);
-    result[0] = tmp | (buf[0] >> 3);
+        unsigned char tmp = (buf[7] << 5);
+        result[7] = (buf[6] << 5) | (buf[7] >> 3);
+        result[6] = (buf[5] << 5) | (buf[6] >> 3);
+        result[5] = (buf[4] << 5) | (buf[5] >> 3);
+        result[4] = (buf[3] << 5) | (buf[4] >> 3);
+        result[3] = (buf[2] << 5) | (buf[3] >> 3);
+        result[2] = (buf[1] << 5) | (buf[2] >> 3);
+        result[1] = (buf[0] << 5) | (buf[1] >> 3);
+        result[0] = tmp | (buf[0] >> 3);
 
-    const unsigned char magic_word[8] = "Htemp99e";
-    for (int i = 0; i < 8; ++i)
-    {
-        result[i] -= (magic_word[i] << 4) | (magic_word[i] >> 4);
-    }
+        const unsigned char magic_word[8] = "Htemp99e";
+        for (int i = 0; i < 8; ++i)
+        {
+            result[i] -= (magic_word[i] << 4) | (magic_word[i] >> 4);
+        }
+    } else memcpy(result, buf, 8);
 }
 
 int

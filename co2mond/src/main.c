@@ -46,6 +46,7 @@
 
 int daemonize = 0;
 int print_unknown = 0;
+int decode_data = 1;
 const char *devicefile = NULL;
 char *datadir;
 
@@ -522,7 +523,7 @@ int main(int argc, char *argv[])
     int c;
     int opterr = 0;
     int show_help = 0;
-    while ((c = getopt(argc, argv, ":dhuD:P:f:l:p:")) != -1)
+    while ((c = getopt(argc, argv, ":dnhuD:P:f:l:p:")) != -1)
     {
         switch (c)
         {
@@ -534,6 +535,9 @@ int main(int argc, char *argv[])
             break;
         case 'u':
             print_unknown = 1;
+            break;
+        case 'n':
+            decode_data = 0;
             break;
         case 'D':
             reldatadir = optarg;
@@ -561,13 +565,14 @@ int main(int argc, char *argv[])
     }
     if (show_help || opterr || optind != argc)
     {
-        fprintf(stderr, "usage: co2mond [-dhu] [-D datadir] [-f device] [-p pidfle] [-l logfile]\n");
+        fprintf(stderr, "usage: co2mond [-dhun] [-D datadir] [-f device] [-p pidfle] [-l logfile]\n");
         if (show_help)
         {
             fprintf(stderr, "\n");
             fprintf(stderr, "  -d    run as a daemon\n");
             fprintf(stderr, "  -h    show this help message\n");
             fprintf(stderr, "  -u    print values for unknown items\n");
+            fprintf(stderr, "  -n    don't decode the data\n");
             fprintf(stderr, "  -D datadir\n");
             fprintf(stderr, "        store values from the sensor in datadir\n");
             fprintf(stderr, "  -P host:port\n");
@@ -729,7 +734,7 @@ int main(int argc, char *argv[])
         close(logfd);
     }
 
-    int r = co2mon_init();
+    int r = co2mon_init(decode_data);
     if (r < 0)
     {
         return r;

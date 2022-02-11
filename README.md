@@ -26,6 +26,9 @@ co2mon packages can be installed from official repo:
     make
     ./co2mond/co2mond
 
+  Unexpected data from...のエラーはこれで解消。
+  sudo ./co2mond/co2mond -n
+
 ## See also
 
   * [ZyAura ZG01C Module Manual](http://www.zyaura.com/support/manual/pdf/ZyAura_CO2_Monitor_ZG01C_Module_ApplicationNote_141120.pdf)

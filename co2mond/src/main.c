@@ -437,10 +437,11 @@ device_loop(co2mon_device dev)
 
             break;
         case CODE_CNTR:
-            if ((unsigned)w > 3000) {
+            // 石油ストーブを使うので無効にする。
+            // if ((unsigned)w > 3000) {
                 // Avoid reading spurious (uninitialized?) data
-                break;
-            }
+            //    break;
+            //}
             snprintf(buf, VALUE_MAX, "%d", (int)w);
 
             if (!daemonize)

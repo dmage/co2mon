@@ -282,6 +282,7 @@ prometheus_thread(void *arg)
 
         fprintf(out,
             "HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/plain; charset=utf-8\r\n"
             "Server: co2mond\r\n"
             "Connection: close\r\n"
             "\r\n"

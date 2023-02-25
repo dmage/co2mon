@@ -1,5 +1,45 @@
 # Software for CO2 Monitor
 
+## Compatible Devices
+
+This software supports compact USB-powered CO2 meters that identify as:
+
+```
+  idVendor           0x04d9 Holtek Semiconductor, Inc.
+  idProduct          0xa052 USB-zyTemp
+```
+
+A of 2023, there are two revisions of these product on the
+market, that can be distinguished by its serial and release
+numbers:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    old        new
+――――――――――――――――――――――――――――――――――
+serial_number      1.40       2.00
+release_number   0x0100     0x0200
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+(where serial_number == iSerial and release_number == bcdDevice)
+
+The co2mon software tries to auto-detect them, but its also possible to
+override the detection (cf. the `-N` and `-n` options).
+
+Note that these devices are rebranded by vendors such as TFA and
+thus are available online under different product names (e.g.
+sold by Amazon, as of 2023). Even if one user reported success
+with a certain product, the vendor might have silently switched
+to a completely different and unsupported hardware without
+changing the product name, at any time.
+
+List of user reported devices that worked in the past:
+
+- TFA AIRCO2NTROL MINI CO2 Monitor (EAN 4009816027351), via
+  Amazon.de, 2023
+
+
 ## Installation
 
 ### Arch Linux
@@ -12,7 +52,7 @@ co2mon packages can be installed from official repo:
 
 `dnf install co2mon`
 
-### From sources
+### From Source
 
     # macOS
     brew install cmake pkg-config hidapi

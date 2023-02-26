@@ -54,7 +54,7 @@ co2mon_open_device()
     {
         fprintf(stderr, "hid_open: error\n");
     }
-    if (decode_data == -1)
+    else if (decode_data == -1)
     {
         struct hid_device_info *hdi = hid_get_device_info(dev);
         if (hdi && hdi->release_number >  0x0100) {

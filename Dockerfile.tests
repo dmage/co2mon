@@ -1,0 +1,4 @@
+FROM ubuntu
+RUN apt-get update && apt-get install -y cmake g++ pkg-config libhidapi-dev umockdev strace
+ADD . .
+CMD /usr/bin/umockdev-record --help ; /usr/bin/umockdev-record -s /dev/hidraw0 -- ls -al /

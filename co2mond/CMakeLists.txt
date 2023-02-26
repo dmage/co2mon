@@ -1,5 +1,5 @@
 project(co2mond)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 find_package(PkgConfig)
 pkg_search_module(HIDAPI REQUIRED hidapi-libusb hidapi)

@@ -1,5 +1,5 @@
 project(co2mon)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 # Known configuration points:
 #
@@ -14,5 +14,6 @@ include(GNUInstallDirs)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra")
 
+enable_testing()
 add_subdirectory(libco2mon)
 add_subdirectory(co2mond)

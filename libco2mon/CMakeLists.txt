@@ -1,5 +1,5 @@
 project(libco2mon)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 find_package(PkgConfig)
 # hidapi-libusb - Ubuntu 14.04 (trusty)
@@ -38,3 +38,6 @@ install(TARGETS co2mon
 install(FILES include/co2mon.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+add_executable(test_co2mon tests/test_co2mon.c)
+target_link_libraries(test_co2mon PRIVATE co2mon)
+add_test(NAME test_co2mon COMMAND $<TARGET_FILE:test_co2mon>)

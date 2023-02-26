@@ -22,7 +22,7 @@
 
 #include "co2mon.h"
 
-static int decode_data = 1;
+static int decode_data = -1;
 
 int
 co2mon_init(int decode)
@@ -53,6 +53,15 @@ co2mon_open_device()
     if (!dev)
     {
         fprintf(stderr, "hid_open: error\n");
+    }
+    if (decode_data == -1)
+    {
+        struct hid_device_info *hdi = hid_get_device_info(dev);
+        if (hdi && hdi->release_number >  0x0100) {
+            decode_data = 0;
+        } else {
+            decode_data = 1;
+        }
     }
     return dev;
 }

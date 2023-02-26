@@ -46,7 +46,7 @@
 
 int daemonize = 0;
 int print_unknown = 0;
-int decode_data = 1;
+static int decode_data = -1; /* -1 == auto-detect old/new release devices */
 const char *devicefile = NULL;
 char *datadir;
 
@@ -524,7 +524,7 @@ int main(int argc, char *argv[])
     int c;
     int opterr = 0;
     int show_help = 0;
-    while ((c = getopt(argc, argv, ":dnhuD:P:f:l:p:")) != -1)
+    while ((c = getopt(argc, argv, ":dnNhuD:P:f:l:p:")) != -1)
     {
         switch (c)
         {
@@ -539,6 +539,9 @@ int main(int argc, char *argv[])
             break;
         case 'n':
             decode_data = 0;
+            break;
+        case 'N':
+            decode_data = 1;
             break;
         case 'D':
             reldatadir = optarg;
@@ -573,7 +576,8 @@ int main(int argc, char *argv[])
             fprintf(stderr, "  -d    run as a daemon\n");
             fprintf(stderr, "  -h    show this help message\n");
             fprintf(stderr, "  -u    print values for unknown items\n");
-            fprintf(stderr, "  -n    don't decode the data\n");
+            fprintf(stderr, "  -n    use payload as-is, as delivered by 2nd release devices (overrides auto-detection)\n");
+            fprintf(stderr, "  -N    decode payload that is scrambled by 1st release devices (overrides auto-detection)\n");
             fprintf(stderr, "  -D datadir\n");
             fprintf(stderr, "        store values from the sensor in datadir\n");
             fprintf(stderr, "  -P host:port\n");
